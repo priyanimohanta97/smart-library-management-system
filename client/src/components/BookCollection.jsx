@@ -194,7 +194,7 @@ export default function BookCollection({
                           : 'bg-[#E8E2D9] text-[#94A3B8] border border-[#D5CEC4] cursor-not-allowed'
                       }`}
                     >
-                      {isAvailable ? 'Loan' : 'Waitlist'}
+                      {isAvailable ? 'Issue Book' : 'Waitlist'}
                     </button>
                   </div>
                 </div>

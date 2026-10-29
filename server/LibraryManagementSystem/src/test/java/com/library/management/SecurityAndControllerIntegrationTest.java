@@ -30,6 +30,12 @@ class SecurityAndControllerIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private com.library.management.repository.LoanRepository loanRepository;
+
+    @Autowired
+    private com.library.management.repository.NotificationRepository notificationRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -41,6 +47,8 @@ class SecurityAndControllerIntegrationTest {
 
     @BeforeEach
     void setupDatabase() {
+        notificationRepository.deleteAll();
+        loanRepository.deleteAll();
         userRepository.deleteAll();
 
         // 1. Standard Reader (ROLE_USER)

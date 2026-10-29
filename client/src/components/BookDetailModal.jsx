@@ -8,7 +8,9 @@ export default function BookDetailModal({
   onClose,
   isSaved,
   onToggleSave,
-  onReserve
+  onReserve,
+  isBorrowingDisabled = false,
+  showReadingList = true
 }) {
   // Close modal on Escape key
   useEffect(() => {
@@ -28,6 +30,7 @@ export default function BookDetailModal({
   if (!isOpen || !book) return null;
 
   const isAvailable = book.status === 'Available';
+  const isFallback = isBorrowingDisabled || typeof book.id !== 'number';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-book-title">
@@ -139,7 +142,7 @@ export default function BookDetailModal({
               {/* Subject Tags */}
               {book.tags && (
                 <div className="pt-1 flex flex-wrap gap-1.5">
-                  {book.tags.map((tag) => (
+                  {(Array.isArray(book.tags) ? book.tags : book.tags.split(',').map(t => t.trim())).map((tag) => (
                     <span 
                       key={tag}
                       className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200"
@@ -155,17 +158,21 @@ export default function BookDetailModal({
 
         {/* Modal Footer Controls */}
         <div className="px-5 sm:px-6 py-4 bg-[#F8FAFC] border-t border-[#DCE7F5] flex flex-wrap items-center justify-between gap-3">
-          <button
-            onClick={() => onToggleSave(book.id)}
-            className={`h-9 px-4 rounded-lg border text-xs font-semibold flex items-center space-x-2 transition-colors cursor-pointer ${
-              isSaved
-                ? 'bg-[#2563EB] text-white border-[#2563EB]'
-                : 'bg-white hover:bg-slate-50 text-slate-700 border-[#DCE7F5]'
-            }`}
-          >
-            <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
-            <span>{isSaved ? 'Saved to Reading List' : 'Save to Reading List'}</span>
-          </button>
+          {showReadingList ? (
+            <button
+              onClick={() => onToggleSave(book.id)}
+              className={`h-9 px-4 rounded-lg border text-xs font-semibold flex items-center space-x-2 transition-colors cursor-pointer ${
+                isSaved
+                  ? 'bg-[#2563EB] text-white border-[#2563EB]'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border-[#DCE7F5]'
+              }`}
+            >
+              <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
+              <span>{isSaved ? 'Saved to Reading List' : 'Save to Reading List'}</span>
+            </button>
+          ) : (
+            <div />
+          )}
 
           <div className="flex items-center space-x-2">
             <button
@@ -176,17 +183,22 @@ export default function BookDetailModal({
             </button>
             <button
               onClick={() => {
-                onReserve(book);
-                onClose();
+                if (!isFallback) {
+                  onReserve(book);
+                  onClose();
+                }
               }}
-              disabled={!isAvailable}
+              disabled={!isAvailable || isFallback}
+              title={isFallback ? 'Borrowing is temporarily unavailable on offline catalogue preview' : undefined}
               className={`h-9 px-5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                isAvailable
+                isFallback
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  : isAvailable
                   ? 'bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-xs'
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
               }`}
             >
-              {isAvailable ? 'Request In-Hall Loan' : 'Join Waitlist'}
+              {isFallback ? 'Borrowing Offline' : isAvailable ? 'Issue Book' : 'Join Waitlist'}
             </button>
           </div>
         </div>
