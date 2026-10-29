@@ -1,0 +1,10 @@
+{
+  "cleanUrls": false,
+  "rewrites": [
+    {
+      "source": "/((?!assets/|images/|pdf/|favicon\\.ico).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+

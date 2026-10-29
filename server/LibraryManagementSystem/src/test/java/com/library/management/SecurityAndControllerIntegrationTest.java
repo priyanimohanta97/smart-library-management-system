@@ -245,4 +245,14 @@ class SecurityAndControllerIntegrationTest {
                 .andExpect(jsonPath("$.status", is("authorized")))
                 .andExpect(jsonPath("$.scope", is("FULL_SYSTEM_ADMINISTRATION")));
     }
+
+    @Test
+    @DisplayName("Health Check: GET /api/health is publicly accessible without authentication")
+    void testHealthCheckEndpointPubliclyAccessible() throws Exception {
+        mockMvc.perform(get("/api/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("UP")))
+                .andExpect(jsonPath("$.service", is("Athenaeum Library Management System")))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
 }

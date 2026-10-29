@@ -61,6 +61,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
                         // Public book catalog browsing
                         .requestMatchers(HttpMethod.GET, "/api/books/**").permitAll()
+                        // Public health check for Render service monitoring
+                        .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                         // Error dispatch
                         .requestMatchers("/error").permitAll()
                         // Role-specific protected endpoints
@@ -86,6 +88,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
+                .map(origin -> origin.endsWith("/") ? origin.substring(0, origin.length() - 1) : origin)
                 .filter(s -> !s.isEmpty())
                 .toList();
 
@@ -111,4 +114,3 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 }
-

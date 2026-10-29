@@ -6,6 +6,8 @@
  * Authoritative MySQL database inventory with live copy counts.
  */
 
+import { buildApiUrl } from './apiConfig.js';
+
 /**
  * Fetches books from the authoritative database catalogue.
  * Supports keyword search and discipline/category filtering.
@@ -16,7 +18,12 @@
  * @returns {Promise<Array<Object>>}
  */
 export async function fetchBooks({ search, category } = {}) {
-  const url = new URL('/api/books', window.location.origin);
+  const basePath = buildApiUrl('/api/books');
+  const baseOrigin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost';
+  const url = basePath.startsWith('http://') || basePath.startsWith('https://')
+    ? new URL(basePath)
+    : new URL(basePath, baseOrigin);
+
   if (search && search.trim()) {
     url.searchParams.set('search', search.trim());
   }
@@ -59,7 +66,7 @@ export async function fetchBookById(id) {
 
   let response;
   try {
-    response = await fetch(`/api/books/${id}`, {
+    response = await fetch(buildApiUrl(`/api/books/${id}`), {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -81,4 +88,3 @@ export async function fetchBookById(id) {
 
   return response.json();
 }
-

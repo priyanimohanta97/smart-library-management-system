@@ -6,6 +6,7 @@
  */
 
 import { getAuthHeaders } from './authService.js';
+import { buildApiUrl } from './apiConfig.js';
 
 /**
  * Retrieves notifications for the authenticated user.
@@ -15,7 +16,7 @@ import { getAuthHeaders } from './authService.js';
 export async function getNotifications() {
   let response;
   try {
-    response = await fetch('/api/notifications', {
+    response = await fetch(buildApiUrl('/api/notifications'), {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -39,7 +40,7 @@ export async function getNotifications() {
 export async function getUnreadCount() {
   let response;
   try {
-    response = await fetch('/api/notifications/unread-count', {
+    response = await fetch(buildApiUrl('/api/notifications/unread-count'), {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -66,7 +67,7 @@ export async function markAsRead(notificationId) {
 
   let response;
   try {
-    response = await fetch(`/api/notifications/${notificationId}/read`, {
+    response = await fetch(buildApiUrl(`/api/notifications/${notificationId}/read`), {
       method: 'PATCH',
       headers: getAuthHeaders(),
     });
@@ -90,7 +91,7 @@ export async function markAsRead(notificationId) {
 export async function markAllAsRead() {
   let response;
   try {
-    response = await fetch('/api/notifications/mark-all-read', {
+    response = await fetch(buildApiUrl('/api/notifications/mark-all-read'), {
       method: 'POST',
       headers: getAuthHeaders(),
     });
@@ -117,7 +118,7 @@ export async function deleteNotification(notificationId) {
 
   let response;
   try {
-    response = await fetch(`/api/notifications/${notificationId}`, {
+    response = await fetch(buildApiUrl(`/api/notifications/${notificationId}`), {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -141,7 +142,7 @@ export async function deleteNotification(notificationId) {
 export async function clearAllNotifications() {
   let response;
   try {
-    response = await fetch('/api/notifications', {
+    response = await fetch(buildApiUrl('/api/notifications'), {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -156,4 +157,3 @@ export async function clearAllNotifications() {
 
   return response.json();
 }
-
