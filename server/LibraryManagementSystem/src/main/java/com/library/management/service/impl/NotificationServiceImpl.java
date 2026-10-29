@@ -93,5 +93,27 @@ public class NotificationServiceImpl implements NotificationService {
     public int markAllAsRead(User user) {
         return notificationRepository.markAllAsReadForRecipient(user, Instant.now());
     }
+
+    @Override
+    @Transactional
+    public void deleteNotification(Long notificationId, User user) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found with id: " + notificationId));
+
+        if (!notification.getRecipient().getId().equals(user.getId())) {
+            throw new AccessDeniedException("Access denied: You cannot delete notifications belonging to another user.");
+        }
+
+        notificationRepository.delete(notification);
+        log.info("Notification {} deleted by recipient {}.", notificationId, user.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public int clearAllNotifications(User user) {
+        int clearedCount = notificationRepository.deleteAllByRecipient(user);
+        log.info("Cleared {} notifications for recipient {}.", clearedCount, user.getEmail());
+        return clearedCount;
+    }
 }
 

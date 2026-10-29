@@ -32,6 +32,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -394,6 +395,110 @@ class LoanAndNotificationIntegrationTest {
                         .header("Authorization", student1Token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unreadCount").value(0));
+    }
+
+    @Test
+    @DisplayName("Notification Deletion: Individual deletion removes notification while protecting circulation records")
+    void testDeleteIndividualNotification() throws Exception {
+        // Setup: student1 has an active loan and two notifications
+        Loan activeLoan = new Loan(student1, testBookAvailable);
+        activeLoan.setStatus(LoanStatus.ISSUED);
+        activeLoan.setIssueDate(Instant.now());
+        activeLoan.setDueDate(Instant.now().plus(14, ChronoUnit.DAYS));
+        activeLoan = loanRepository.save(activeLoan);
+
+        Notification n1 = notificationRepository.save(new Notification(student1, "Loan Approved", "Your loan was approved", NotificationType.LOAN_APPROVED, activeLoan.getId()));
+        Notification n2 = notificationRepository.save(new Notification(student1, "Due Reminder", "Due in 3 days", NotificationType.LOAN_REQUEST, activeLoan.getId()));
+
+        int initialBookCopies = testBookAvailable.getCopiesAvailable();
+
+        // Delete n1
+        mockMvc.perform(delete("/api/notifications/" + n1.getId())
+                        .header("Authorization", student1Token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message", containsString("deleted successfully")));
+
+        // Verify n1 is deleted from database
+        assertThat(notificationRepository.findById(n1.getId())).isEmpty();
+
+        // Verify n2 is still present
+        assertThat(notificationRepository.findById(n2.getId())).isPresent();
+
+        // Verify GET /api/notifications returns only n2
+        mockMvc.perform(get("/api/notifications")
+                        .header("Authorization", student1Token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id").value(n2.getId()));
+
+        // CRITICAL CHECK: Underlying circulation records are 100% UNTOUCHED
+        Optional<Loan> loanAfterDelete = loanRepository.findById(activeLoan.getId());
+        assertThat(loanAfterDelete).isPresent();
+        assertThat(loanAfterDelete.get().getStatus()).isEqualTo(LoanStatus.ISSUED);
+        assertThat(loanAfterDelete.get().getUser().getId()).isEqualTo(student1.getId());
+
+        Optional<Book> bookAfterDelete = bookRepository.findById(testBookAvailable.getId());
+        assertThat(bookAfterDelete).isPresent();
+        assertThat(bookAfterDelete.get().getCopiesAvailable()).isEqualTo(initialBookCopies);
+    }
+
+    @Test
+    @DisplayName("Notification Clear All: Clears all user notifications, preserves other users' alerts, and protects circulation records")
+    void testClearAllNotifications() throws Exception {
+        // Setup: active loan for student1
+        Loan loan1 = new Loan(student1, testBookAvailable);
+        loan1.setStatus(LoanStatus.ISSUED);
+        loan1 = loanRepository.save(loan1);
+
+        notificationRepository.save(new Notification(student1, "Alert 1", "Message 1", NotificationType.LOAN_APPROVED, loan1.getId()));
+        notificationRepository.save(new Notification(student1, "Alert 2", "Message 2", NotificationType.RETURN_REQUEST, loan1.getId()));
+
+        // Student2 also has a notification
+        Notification student2Notif = notificationRepository.save(new Notification(student2, "Student 2 Alert", "Message for student 2", NotificationType.LOAN_REQUEST, 999L));
+
+        // Student1 executes Clear All
+        mockMvc.perform(delete("/api/notifications")
+                        .header("Authorization", student1Token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.clearedCount").value(2));
+
+        // Verify student1 has 0 notifications
+        mockMvc.perform(get("/api/notifications")
+                        .header("Authorization", student1Token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        // Verify student2's notification was NOT deleted
+        assertThat(notificationRepository.findById(student2Notif.getId())).isPresent();
+
+        // CRITICAL CHECK: Underlying loan records remain intact
+        Optional<Loan> persistedLoan = loanRepository.findById(loan1.getId());
+        assertThat(persistedLoan).isPresent();
+        assertThat(persistedLoan.get().getStatus()).isEqualTo(LoanStatus.ISSUED);
+    }
+
+    @Test
+    @DisplayName("Notification Authorization: Users cannot delete other users' notifications, unauthenticated requests rejected")
+    void testNotificationDeletionAuthorization() throws Exception {
+        Notification student1Notif = notificationRepository.save(
+                new Notification(student1, "Private Alert", "Personal loan alert", NotificationType.LOAN_APPROVED, 555L));
+
+        // 1. Student2 attempts to delete student1's notification -> 403 Forbidden
+        mockMvc.perform(delete("/api/notifications/" + student1Notif.getId())
+                        .header("Authorization", student2Token))
+                .andExpect(status().isForbidden());
+
+        // 2. Unauthenticated request -> 401 Unauthorized
+        mockMvc.perform(delete("/api/notifications/" + student1Notif.getId()))
+                .andExpect(status().isUnauthorized());
+
+        // 3. Deleting non-existent notification -> 404 Not Found
+        mockMvc.perform(delete("/api/notifications/9999999")
+                        .header("Authorization", student1Token))
+                .andExpect(status().isNotFound());
+
+        // Confirm student1Notif is still intact in the database
+        assertThat(notificationRepository.findById(student1Notif.getId())).isPresent();
     }
 
     @Test

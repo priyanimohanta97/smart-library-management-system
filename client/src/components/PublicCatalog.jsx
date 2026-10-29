@@ -11,7 +11,8 @@ import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  FileText
 } from 'lucide-react';
 import SearchBar from './SearchBar';
 import BookCollection from './BookCollection';
@@ -28,6 +29,7 @@ export default function PublicCatalog({
   onReserve,
   onOpenSavedDrawer,
   onOpenLogin,
+  onNavigateNotesPyqs,
 }) {
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -157,6 +159,40 @@ export default function PublicCatalog({
           MAIN CATALOGUE CONTENT AREA
           ==================================================== */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-6">
+        {/* Quick Gateway to Notes & PYQs */}
+        {onNavigateNotesPyqs && (
+          <div className="bg-gradient-to-r from-[#0B1F3A] to-[#1E3A8A] text-white rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm border border-[#2563EB]/30">
+            <div className="flex items-center space-x-3.5">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 shrink-0">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/30 text-blue-200">
+                    Student Resource Hub
+                  </span>
+                  <span className="text-xs text-blue-200/80 font-medium hidden sm:inline">
+                    Verified Curated Materials
+                  </span>
+                </div>
+                <p className="text-sm sm:text-base font-bold text-white mt-0.5">
+                  Looking for Semester Notes or Exam PYQs?
+                </p>
+                <p className="text-xs text-blue-100/80">
+                  Access complete notes and previous year question papers (College Mid-Sem &amp; Government Exams).
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onNavigateNotesPyqs}
+              className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer hover:shadow-md"
+            >
+              <span>Explore Notes &amp; PYQs</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         {/* 1. LOADING STATE */}
         {isLoadingBooks && (
           <div className="bg-white rounded-2xl border border-[#DCE7F5] p-12 text-center shadow-xs my-6">

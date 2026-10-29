@@ -5,7 +5,7 @@
  * Interacts with the backend notification APIs (/api/notifications).
  */
 
-import { getAuthHeaders } from './authService';
+import { getAuthHeaders } from './authService.js';
 
 /**
  * Retrieves notifications for the authenticated user.
@@ -101,6 +101,57 @@ export async function markAllAsRead() {
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
     throw new Error(errorData?.message || `Failed to mark notifications (HTTP ${response.status}).`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Deletes a specific notification by ID.
+ * 
+ * @param {number|string} notificationId
+ * @returns {Promise<Object>}
+ */
+export async function deleteNotification(notificationId) {
+  if (!notificationId) return null;
+
+  let response;
+  try {
+    response = await fetch(`/api/notifications/${notificationId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+  } catch (err) {
+    throw new Error('Network error: unable to delete notification.');
+  }
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to delete notification (HTTP ${response.status}).`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Clears all circulation notifications for the authenticated user.
+ * 
+ * @returns {Promise<{message: string, clearedCount: number}>}
+ */
+export async function clearAllNotifications() {
+  let response;
+  try {
+    response = await fetch('/api/notifications', {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+  } catch (err) {
+    throw new Error('Network error: unable to clear notifications.');
+  }
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to clear notifications (HTTP ${response.status}).`);
   }
 
   return response.json();

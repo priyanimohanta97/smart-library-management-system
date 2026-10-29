@@ -19,5 +19,9 @@ public interface NotificationService {
     NotificationResponse markAsRead(Long notificationId, User user);
 
     int markAllAsRead(User user);
+
+    void deleteNotification(Long notificationId, User user);
+
+    int clearAllNotifications(User user);
 }
 

@@ -19,6 +19,7 @@ export default function HomePage({
   onSelectRole,
   onExploreBooks,
   onOpenLogin,
+  onNavigateNotesPyqs,
 }) {
   return (
     <div className="w-full bg-[#F8FAFC] text-[#334155] font-interface">
@@ -244,7 +245,16 @@ export default function HomePage({
                       <Library className="w-5 h-5 text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-[#0B1F3A]">Veer Surendra Sai University of Technology</p>
+                      <a
+                        href="https://www.vssut.ac.in/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-bold text-[#0B1F3A] hover:text-[#2563EB] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] rounded-xs transition-colors inline-block cursor-pointer"
+                        title="Visit official VSSUT website (opens in a new tab)"
+                        aria-label="Veer Surendra Sai University of Technology official website"
+                      >
+                        Veer Surendra Sai University of Technology
+                      </a>
                       <p className="text-[11px] text-slate-500">Established 1956 · Premier Engineering & Scientific Stacks</p>
                     </div>
                   </div>
@@ -483,6 +493,13 @@ export default function HomePage({
                     Explore Books
                   </button>
                 </li>
+                {onNavigateNotesPyqs && (
+                  <li>
+                    <button onClick={onNavigateNotesPyqs} className="hover:text-white transition-colors cursor-pointer">
+                      Notes &amp; PYQs
+                    </button>
+                  </li>
+                )}
                 <li>
                   <a href="#library-services" className="hover:text-white transition-colors">
                     Library Services
