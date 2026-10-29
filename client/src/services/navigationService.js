@@ -10,6 +10,7 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   CATALOG: '/catalog',
+  NOTES_PYQS: '/notes-pyqs',
   STUDENT_DASHBOARD: '/student-dashboard',
   LIBRARIAN_DASHBOARD: '/librarian-dashboard',
 };
@@ -18,6 +19,7 @@ export const VIEWS = {
   HOME: 'home',
   LOGIN: 'login',
   CATALOG: 'catalog',
+  NOTES_PYQS: 'notes-pyqs',
   STUDENT_DASHBOARD: 'student-dashboard',
   LIBRARIAN_DASHBOARD: 'librarian-dashboard',
 };
@@ -62,6 +64,8 @@ export function getPathFromView(view) {
       return ROUTES.LOGIN;
     case VIEWS.CATALOG:
       return ROUTES.CATALOG;
+    case VIEWS.NOTES_PYQS:
+      return ROUTES.NOTES_PYQS;
     case VIEWS.STUDENT_DASHBOARD:
       return ROUTES.STUDENT_DASHBOARD;
     case VIEWS.LIBRARIAN_DASHBOARD:
@@ -95,6 +99,18 @@ export function getViewFromPath(pathname, currentUser) {
     cleanPath === '/books'
   ) {
     return VIEWS.CATALOG;
+  }
+
+  // 2b. Public Notes & PYQs route (Open to everyone: guests, students, admins)
+  if (
+    cleanPath === '/notes-pyqs' ||
+    cleanPath === '/notes' ||
+    cleanPath === '/pyq' ||
+    cleanPath === '/pyqs' ||
+    cleanPath === '/study-materials' ||
+    cleanPath === '/resources'
+  ) {
+    return VIEWS.NOTES_PYQS;
   }
 
   // 3. Login route

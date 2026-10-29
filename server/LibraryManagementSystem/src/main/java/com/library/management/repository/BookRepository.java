@@ -20,6 +20,8 @@ public interface BookRepository extends JpaRepository<Book, Long> {
 
     boolean existsByCallNumber(String callNumber);
 
+    boolean existsByTitleIgnoreCaseAndAuthorIgnoreCase(String title, String author);
+
     /**
      * Acquires a row-level pessimistic write lock (SELECT ... FOR UPDATE)
      * to protect copiesAvailable against concurrent over-issuing during approvals and returns.

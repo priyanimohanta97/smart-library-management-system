@@ -21,6 +21,7 @@ export default function Navbar({
   onLogout,
   onNavigateHome,
   onNavigateExplore,
+  onNavigateNotesPyqs,
   onNavigateServices,
   onNavigateAbout,
   onOpenDashboard,
@@ -102,6 +103,15 @@ export default function Navbar({
             }`}
           >
             Explore Books
+          </button>
+          <button 
+            type="button"
+            onClick={onNavigateNotesPyqs}
+            className={`py-1 transition-colors hover:text-[#2563EB] focus-visible:ring-2 focus-visible:ring-[#2563EB] rounded px-1 cursor-pointer ${
+              currentView === 'notes-pyqs' ? 'text-[#2563EB] border-b-2 border-[#2563EB] font-bold' : ''
+            }`}
+          >
+            Notes & PYQs
           </button>
           <button 
             type="button"
@@ -258,6 +268,17 @@ export default function Navbar({
               className="text-left px-3 py-2 rounded hover:bg-[#EFF6FF] transition-colors"
             >
               Explore Books
+            </button>
+            <button 
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onNavigateNotesPyqs?.();
+              }}
+              className={`text-left px-3 py-2 rounded hover:bg-[#EFF6FF] transition-colors ${
+                currentView === 'notes-pyqs' ? 'text-[#2563EB] font-bold bg-[#EFF6FF]' : ''
+              }`}
+            >
+              Notes & PYQs
             </button>
             <button 
               onClick={() => {

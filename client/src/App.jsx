@@ -5,6 +5,7 @@ import LoginPage from './components/LoginPage';
 import PublicCatalog from './components/PublicCatalog';
 import StudentDashboard from './components/StudentDashboard';
 import LibrarianDashboard from './components/LibrarianDashboard';
+import NotesAndPyqsPage from './components/NotesAndPyqsPage';
 import BookDetailModal from './components/BookDetailModal';
 import SavedBooksDrawer from './components/SavedBooksDrawer';
 import NotificationDrawer from './components/NotificationDrawer';
@@ -14,7 +15,7 @@ import { CheckCircle2, AlertCircle, WifiOff } from 'lucide-react';
 import { getStoredAuth, clearStoredAuth, fetchCurrentUser } from './services/authService';
 import { fetchBooks } from './services/bookService';
 import { requestLoan } from './services/loanService';
-import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from './services/notificationService';
+import { getNotifications, getUnreadCount, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications } from './services/notificationService';
 import { 
   VIEWS, 
   ROUTES, 
@@ -189,6 +190,37 @@ export default function App() {
     }
   };
 
+  // Delete single notification
+  const handleDeleteNotification = async (id) => {
+    try {
+      const target = notifications.find((n) => n.id === id);
+      const wasUnread = target && !target.isRead && !target.read;
+
+      await deleteNotification(id);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      if (wasUnread) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+      showToast('Notification removed.', 'info');
+    } catch (err) {
+      showToast(err.message || 'Failed to delete notification.', 'error');
+      loadNotificationsData();
+    }
+  };
+
+  // Clear all notifications
+  const handleClearAllNotifications = async () => {
+    try {
+      await clearAllNotifications();
+      setNotifications([]);
+      setUnreadCount(0);
+      showToast('All circulation notifications cleared.', 'info');
+    } catch (err) {
+      showToast(err.message || 'Failed to clear all notifications.', 'error');
+      loadNotificationsData();
+    }
+  };
+
   // Synchronize reading list when currentUser switches or logs out
   useEffect(() => {
     setSavedBookIds(loadSavedBooksForUser(currentUser));
@@ -348,6 +380,11 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleNavigateNotesPyqs = () => {
+    navigateTo('notes-pyqs');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleNavigateServices = () => {
     if (currentView !== 'home') {
       navigateTo('home');
@@ -451,6 +488,7 @@ export default function App() {
         onLogout={handleLogout}
         onNavigateHome={handleNavigateHome}
         onNavigateExplore={handleExploreBooks}
+        onNavigateNotesPyqs={handleNavigateNotesPyqs}
         onNavigateServices={handleNavigateServices}
         onNavigateAbout={handleNavigateAbout}
         onOpenDashboard={handleOpenDashboard}
@@ -467,6 +505,7 @@ export default function App() {
             onSelectRole={(role) => handleOpenLogin(role)}
             onExploreBooks={handleExploreBooks}
             onOpenLogin={() => handleOpenLogin('STUDENT')}
+            onNavigateNotesPyqs={handleNavigateNotesPyqs}
           />
         )}
 
@@ -484,10 +523,19 @@ export default function App() {
             onReserve={handleReserve}
             onOpenSavedDrawer={() => setIsSavedDrawerOpen(true)}
             onOpenLogin={() => handleOpenLogin('STUDENT')}
+            onNavigateNotesPyqs={handleNavigateNotesPyqs}
           />
         )}
 
-        {/* VIEW 3: Animated Split-Screen Authentication & Registration */}
+        {/* VIEW 3: Notes & Previous Year Questions (PYQs) */}
+        {currentView === 'notes-pyqs' && (
+          <NotesAndPyqsPage
+            onNavigateCatalog={handleExploreBooks}
+            onNavigateHome={handleNavigateHome}
+          />
+        )}
+
+        {/* VIEW 4: Animated Split-Screen Authentication & Registration */}
         {currentView === 'login' && (
           <LoginPage
             onLoginSuccess={handleLoginSuccess}
@@ -496,7 +544,7 @@ export default function App() {
           />
         )}
 
-        {/* VIEW 3: Dedicated Student Dashboard */}
+        {/* VIEW 5: Dedicated Student Dashboard */}
         {currentView === 'student-dashboard' && (
           <StudentDashboard
             currentUser={currentUser}
@@ -509,10 +557,11 @@ export default function App() {
             onOpenSavedDrawer={() => setIsSavedDrawerOpen(true)}
             onLogout={handleLogout}
             onNavigateHome={handleNavigateHome}
+            onNavigateNotesPyqs={handleNavigateNotesPyqs}
           />
         )}
 
-        {/* VIEW 4: Dedicated Librarian Dashboard */}
+        {/* VIEW 6: Dedicated Librarian Dashboard */}
         {currentView === 'librarian-dashboard' && (
           <LibrarianDashboard
             currentUser={currentUser}
@@ -554,6 +603,8 @@ export default function App() {
         unreadCount={unreadCount}
         onMarkAsRead={handleMarkNotificationRead}
         onMarkAllAsRead={handleMarkAllNotificationsRead}
+        onDeleteNotification={handleDeleteNotification}
+        onClearAll={handleClearAllNotifications}
         isLoading={isLoadingNotifications}
       />
 

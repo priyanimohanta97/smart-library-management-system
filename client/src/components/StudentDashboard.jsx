@@ -33,7 +33,8 @@ export default function StudentDashboard({
   onReserve,
   onOpenSavedDrawer,
   onLogout,
-  onNavigateHome
+  onNavigateHome,
+  onNavigateNotesPyqs
 }) {
   const catalogBooks = isFallbackCatalogue 
     ? STATIC_BOOKS 
@@ -254,6 +255,17 @@ export default function StudentDashboard({
               <RotateCcw className="w-4 h-4" />
               <span>My Loans & Borrowing ({activeIssuedLoans.length + pendingRequests.length})</span>
             </button>
+
+            {onNavigateNotesPyqs && (
+              <button
+                type="button"
+                onClick={onNavigateNotesPyqs}
+                className="px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center space-x-2 text-slate-300 hover:text-white hover:bg-white/10"
+              >
+                <FileText className="w-4 h-4 text-blue-300" />
+                <span>Notes &amp; PYQs</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

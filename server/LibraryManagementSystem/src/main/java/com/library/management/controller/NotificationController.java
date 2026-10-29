@@ -8,6 +8,7 @@ import com.library.management.service.NotificationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -67,6 +68,29 @@ public class NotificationController {
         User user = getAuthenticatedUser(userDetails);
         int count = notificationService.markAllAsRead(user);
         return ResponseEntity.ok(Map.of("markedCount", count));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> deleteNotification(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = getAuthenticatedUser(userDetails);
+        notificationService.deleteNotification(id, user);
+        return ResponseEntity.ok(Map.of("message", "Notification deleted successfully", "id", id));
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Map<String, Object>> clearAllNotifications(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = getAuthenticatedUser(userDetails);
+        int count = notificationService.clearAllNotifications(user);
+        return ResponseEntity.ok(Map.of("message", "All notifications cleared successfully", "clearedCount", count));
+    }
+
+    @DeleteMapping("/clear-all")
+    public ResponseEntity<Map<String, Object>> clearAllNotificationsAlias(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return clearAllNotifications(userDetails);
     }
 }
 
