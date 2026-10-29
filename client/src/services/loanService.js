@@ -6,7 +6,8 @@
  * Handles student loan requests, returns, and librarian approvals.
  */
 
-import { getAuthHeaders } from './authService';
+import { getAuthHeaders } from './authService.js';
+import { buildApiUrl } from './apiConfig.js';
 
 /**
  * Submits a new loan request for a book.
@@ -23,7 +24,7 @@ export async function requestLoan({ bookId, notes }) {
 
   let response;
   try {
-    response = await fetch('/api/loans/request', {
+    response = await fetch(buildApiUrl('/api/loans/request'), {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ bookId, notes: notes || '' }),
@@ -58,7 +59,7 @@ export async function requestLoan({ bookId, notes }) {
 export async function getMyLoans() {
   let response;
   try {
-    response = await fetch('/api/loans/my-loans', {
+    response = await fetch(buildApiUrl('/api/loans/my-loans'), {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -87,7 +88,7 @@ export async function requestReturn(loanId) {
 
   let response;
   try {
-    response = await fetch(`/api/loans/${loanId}/return-request`, {
+    response = await fetch(buildApiUrl(`/api/loans/${loanId}/return-request`), {
       method: 'POST',
       headers: getAuthHeaders(),
     });
@@ -112,7 +113,7 @@ export async function requestReturn(loanId) {
 export async function getPendingLoans() {
   let response;
   try {
-    response = await fetch('/api/loans/pending', {
+    response = await fetch(buildApiUrl('/api/loans/pending'), {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -137,7 +138,7 @@ export async function getPendingLoans() {
 export async function approveLoan(loanId) {
   let response;
   try {
-    response = await fetch(`/api/loans/${loanId}/approve`, {
+    response = await fetch(buildApiUrl(`/api/loans/${loanId}/approve`), {
       method: 'POST',
       headers: getAuthHeaders(),
     });
@@ -168,7 +169,7 @@ export async function rejectLoan(loanId, reason) {
 
   let response;
   try {
-    response = await fetch(`/api/loans/${loanId}/reject`, {
+    response = await fetch(buildApiUrl(`/api/loans/${loanId}/reject`), {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ reason: reason.trim() }),
@@ -194,7 +195,7 @@ export async function rejectLoan(loanId, reason) {
 export async function getPendingReturns() {
   let response;
   try {
-    response = await fetch('/api/loans/return-requests', {
+    response = await fetch(buildApiUrl('/api/loans/return-requests'), {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -219,7 +220,7 @@ export async function getPendingReturns() {
 export async function confirmReturn(loanId) {
   let response;
   try {
-    response = await fetch(`/api/loans/${loanId}/confirm-return`, {
+    response = await fetch(buildApiUrl(`/api/loans/${loanId}/confirm-return`), {
       method: 'POST',
       headers: getAuthHeaders(),
     });
@@ -244,7 +245,7 @@ export async function confirmReturn(loanId) {
 export async function getActiveLoans() {
   let response;
   try {
-    response = await fetch('/api/loans/active', {
+    response = await fetch(buildApiUrl('/api/loans/active'), {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -268,7 +269,7 @@ export async function getActiveLoans() {
 export async function getCirculationStats() {
   let response;
   try {
-    response = await fetch('/api/loans/stats', {
+    response = await fetch(buildApiUrl('/api/loans/stats'), {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -283,4 +284,3 @@ export async function getCirculationStats() {
 
   return response.json();
 }
-

@@ -8,6 +8,8 @@
 
 const AUTH_STORAGE_KEY = 'athenaeum_auth_session';
 
+import { buildApiUrl } from './apiConfig.js';
+
 /**
  * Sends authentication credentials to the backend endpoint: POST /api/auth/login
  * 
@@ -28,7 +30,7 @@ export async function login({ email, password }) {
 
   let response;
   try {
-    response = await fetch('/api/auth/login', {
+    response = await fetch(buildApiUrl('/api/auth/login'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -220,7 +222,7 @@ export async function fetchCurrentUser() {
 
   let response;
   try {
-    response = await fetch('/api/users/me', {
+    response = await fetch(buildApiUrl('/api/users/me'), {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -282,7 +284,7 @@ export async function register({ fullName, email, password }) {
 
   let response;
   try {
-    response = await fetch('/api/auth/register', {
+    response = await fetch(buildApiUrl('/api/auth/register'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
