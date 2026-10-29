@@ -43,6 +43,35 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    @ExceptionHandler(LoanOperationException.class)
+    public ResponseEntity<ErrorResponse> handleLoanOperationException(
+            LoanOperationException ex,
+            HttpServletRequest request
+    ) {
+        HttpStatus status = ex.getStatusCode() == 409 ? HttpStatus.CONFLICT : HttpStatus.BAD_REQUEST;
+        ErrorResponse response = new ErrorResponse(
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(status).body(response);
+    }
+
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLockingFailureException(
+            org.springframework.dao.OptimisticLockingFailureException ex,
+            HttpServletRequest request
+    ) {
+        ErrorResponse response = new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                "The requested resource was concurrently modified by another transaction. Please refresh and retry.",
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     @ExceptionHandler(DuplicateResourceException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateResourceException(
             DuplicateResourceException ex,

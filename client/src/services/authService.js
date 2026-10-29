@@ -70,22 +70,104 @@ export async function login({ email, password }) {
   return data;
 }
 
+// In-memory storage fallback for Node.js test runners or environments where sessionStorage is undefined
+let memorySessionStorage = null;
+
+function getStorage() {
+  if (typeof sessionStorage !== 'undefined') {
+    return sessionStorage;
+  }
+  if (!memorySessionStorage) {
+    const store = new Map();
+    memorySessionStorage = {
+      getItem: (key) => store.get(key) || null,
+      setItem: (key, val) => store.set(key, String(val)),
+      removeItem: (key) => store.delete(key),
+      clear: () => store.clear(),
+    };
+  }
+  return memorySessionStorage;
+}
+
+/**
+ * Determines whether a session object or JWT token is expired or invalid.
+ * 
+ * @param {Object} session
+ * @returns {boolean}
+ */
+export function isSessionExpired(session) {
+  if (!session || !session.token || !session.user) {
+    return true;
+  }
+
+  // 1. Check stored expiresInMs if provided and positive
+  if (session.expiresInMs && typeof session.expiresInMs === 'number' && session.expiresInMs > 0) {
+    const storedAt = session.storedAt || 0;
+    if (storedAt > 0 && Date.now() - storedAt >= session.expiresInMs) {
+      return true;
+    }
+  }
+
+  // 2. Decode embedded JWT expiration claim
+  try {
+    const parts = String(session.token).split('.');
+    if (parts.length !== 3) {
+      // Tokens in this system are Spring Security JWTs; non-3-part tokens are malformed/invalid
+      return true;
+    }
+
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
+    
+    let jsonString;
+    if (typeof atob === 'function') {
+      jsonString = atob(padded);
+    } else if (typeof Buffer !== 'undefined') {
+      jsonString = Buffer.from(padded, 'base64').toString('utf-8');
+    }
+
+    if (jsonString) {
+      const payload = JSON.parse(jsonString);
+      if (payload.exp && typeof payload.exp === 'number') {
+        // exp claim is in seconds
+        if (Date.now() >= payload.exp * 1000) {
+          return true;
+        }
+      }
+    }
+  } catch {
+    // If token parsing fails, treat as malformed/expired
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Retrieves the current session-scoped authentication record.
  * Uses sessionStorage so credentials do not persist beyond the active browser tab.
+ * Safely purges expired sessions.
  * 
- * @returns {{token: string, tokenType: string, user: Object} | null}
+ * @returns {{token: string, tokenType: string, expiresInMs: number, user: Object} | null}
  */
 export function getStoredAuth() {
   try {
-    const raw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+    const storage = getStorage();
+    const raw = storage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && parsed.token && parsed.user) {
+      if (isSessionExpired(parsed)) {
+        clearStoredAuth();
+        return null;
+      }
       return parsed;
     }
+    clearStoredAuth();
     return null;
   } catch {
+    clearStoredAuth();
     return null;
   }
 }
@@ -98,6 +180,7 @@ export function getStoredAuth() {
  */
 export function setStoredAuth(authData) {
   try {
+    const storage = getStorage();
     const sessionData = {
       token: authData.token,
       tokenType: authData.tokenType || 'Bearer',
@@ -105,7 +188,7 @@ export function setStoredAuth(authData) {
       user: authData.user,
       storedAt: Date.now(),
     };
-    sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(sessionData));
+    storage.setItem(AUTH_STORAGE_KEY, JSON.stringify(sessionData));
   } catch (e) {
     console.warn('Session storage write failed:', e);
   }
@@ -116,10 +199,51 @@ export function setStoredAuth(authData) {
  */
 export function clearStoredAuth() {
   try {
-    sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    const storage = getStorage();
+    storage.removeItem(AUTH_STORAGE_KEY);
   } catch {
     // Ignore in restricted environments
   }
+}
+
+/**
+ * Verifies active token against backend /api/users/me.
+ * Clears session and returns null if the server reports the token is invalid/expired.
+ * 
+ * @returns {Promise<Object|null>}
+ */
+export async function fetchCurrentUser() {
+  const auth = getStoredAuth();
+  if (!auth?.token) {
+    return null;
+  }
+
+  let response;
+  try {
+    response = await fetch('/api/users/me', {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  } catch (err) {
+    // Return cached user if network is unreachable
+    return auth.user;
+  }
+
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      clearStoredAuth();
+      return null;
+    }
+    return auth.user;
+  }
+
+  const userData = await response.json().catch(() => null);
+  if (userData && userData.email) {
+    setStoredAuth({ ...auth, user: userData });
+    return userData;
+  }
+
+  return auth.user;
 }
 
 /**

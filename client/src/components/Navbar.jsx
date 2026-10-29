@@ -9,7 +9,8 @@ import {
   LogOut, 
   LayoutDashboard,
   Sparkles,
-  BookOpen
+  BookOpen,
+  Bell
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -23,11 +24,19 @@ export default function Navbar({
   onNavigateServices,
   onNavigateAbout,
   onOpenDashboard,
-  currentView = 'home'
+  currentView = 'home',
+  unreadNotificationsCount = 0,
+  onOpenNotifications
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isAdminOrManager = currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'MANAGER');
+  const isAdminOrManager = currentUser && (
+    currentUser.role === 'ADMIN' ||
+    currentUser.role === 'MANAGER' ||
+    currentUser.role === 'LIBRARIAN' ||
+    currentUser.role === 'ROLE_ADMIN' ||
+    currentUser.role === 'ROLE_MANAGER'
+  );
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#DCE7F5] transition-all shadow-2xs">
@@ -112,8 +121,8 @@ export default function Navbar({
 
         {/* Action Controls */}
         <div className="flex items-center space-x-2.5 sm:space-x-3">
-          {/* Saved Reading List (when on catalog/dashboard) */}
-          {onOpenSaved && (
+          {/* Saved Reading List (when on catalog/dashboard) - hidden for ADMIN/MANAGER/LIBRARIAN */}
+          {!isAdminOrManager && onOpenSaved && (
             <button
               onClick={onOpenSaved}
               className="h-9 relative inline-flex items-center space-x-2 px-3 rounded-md border border-[#DCE7F5] bg-[#F5F9FF] hover:bg-[#EFF6FF] text-[#0B1F3A] text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[#2563EB] cursor-pointer"
@@ -124,6 +133,24 @@ export default function Navbar({
               {savedCount > 0 && (
                 <span className="w-4.5 h-4.5 rounded-full bg-[#2563EB] text-white text-[10px] font-bold flex items-center justify-center">
                   {savedCount}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* Notification Bell (for authenticated users) */}
+          {currentUser && onOpenNotifications && (
+            <button
+              type="button"
+              onClick={onOpenNotifications}
+              className="h-9 relative inline-flex items-center justify-center w-9 rounded-md border border-[#DCE7F5] bg-[#F5F9FF] hover:bg-[#EFF6FF] text-[#0B1F3A] transition-colors focus-visible:ring-2 focus-visible:ring-[#2563EB] cursor-pointer"
+              title="Notifications"
+              aria-label={`View notifications, ${unreadNotificationsCount} unread`}
+            >
+              <Bell className="w-4 h-4 text-[#475569]" />
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
+                  {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
                 </span>
               )}
             </button>

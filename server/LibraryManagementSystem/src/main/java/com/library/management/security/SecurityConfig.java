@@ -59,12 +59,20 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public auth endpoints
                         .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
+                        // Public book catalog browsing
+                        .requestMatchers(HttpMethod.GET, "/api/books/**").permitAll()
                         // Error dispatch
                         .requestMatchers("/error").permitAll()
                         // Role-specific protected endpoints
                         .requestMatchers("/api/users/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/users/manager/**").hasAnyRole("MANAGER", "ADMIN")
                         .requestMatchers("/api/users/me").authenticated()
+                        // Librarian-specific loan operations
+                        .requestMatchers("/api/loans/pending", "/api/loans/return-requests", "/api/loans/active", "/api/loans/stats").hasAnyRole("MANAGER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/loans/*/approve", "/api/loans/*/reject", "/api/loans/*/confirm-return").hasAnyRole("MANAGER", "ADMIN")
+                        // Student/authenticated loan and notification operations
+                        .requestMatchers("/api/loans/**").authenticated()
+                        .requestMatchers("/api/notifications/**").authenticated()
                         // All other APIs require authentication by default
                         .anyRequest().authenticated()
                 )

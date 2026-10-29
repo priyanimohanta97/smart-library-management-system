@@ -10,6 +10,7 @@ export default function BookCard({
   onQuickReserve
 }) {
   const isAvailable = book.status === 'Available';
+  const isFallback = typeof book.id !== 'number' || Boolean(book.isFallback);
 
   return (
     <article className="group bg-white rounded-xl border border-[#DCE7F5] hover:border-[#2563EB] shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden h-full">
@@ -145,15 +146,22 @@ export default function BookCard({
           </button>
 
           <button
-            onClick={() => onQuickReserve(book)}
-            disabled={!isAvailable}
+            onClick={() => {
+              if (!isFallback) {
+                onQuickReserve(book);
+              }
+            }}
+            disabled={!isAvailable || isFallback}
+            title={isFallback ? 'Borrowing is temporarily unavailable on offline catalogue preview' : undefined}
             className={`h-9 flex items-center justify-center px-2.5 text-xs font-medium rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-[#2563EB] cursor-pointer ${
-              isAvailable
+              isFallback
+                ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                : isAvailable
                 ? 'bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-xs'
                 : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
             }`}
           >
-            {isAvailable ? 'Request Loan' : 'Join Waitlist'}
+            {isFallback ? 'Offline' : isAvailable ? 'Issue Book' : 'Join Waitlist'}
           </button>
         </div>
       </div>
