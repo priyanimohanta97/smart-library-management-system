@@ -12,13 +12,13 @@ public interface LoanService {
 
     LoanResponse requestLoan(LoanRequestDto dto, User student);
 
-    LoanResponse approveLoan(Long loanId, User librarian);
+    LoanResponse approveLoan(String loanId, User librarian);
 
-    LoanResponse rejectLoan(Long loanId, RejectLoanDto dto, User librarian);
+    LoanResponse rejectLoan(String loanId, RejectLoanDto dto, User librarian);
 
-    LoanResponse requestReturn(Long loanId, User student);
+    LoanResponse requestReturn(String loanId, User student);
 
-    LoanResponse confirmReturn(Long loanId, User librarian);
+    LoanResponse confirmReturn(String loanId, User librarian);
 
     List<LoanResponse> getStudentLoans(User student);
 
@@ -30,4 +30,3 @@ public interface LoanService {
 
     CirculationStatsResponse getCirculationStats();
 }
-

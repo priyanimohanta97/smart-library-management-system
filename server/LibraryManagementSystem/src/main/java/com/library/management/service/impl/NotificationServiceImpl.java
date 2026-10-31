@@ -15,7 +15,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -33,7 +32,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public void sendNotification(User recipient, String title, String message, NotificationType type, Long referenceId) {
+    public void sendNotification(User recipient, String title, String message, NotificationType type, String referenceId) {
         if (recipient == null) return;
 
         // Deduplication guard for loan lifecycle notifications
@@ -48,7 +47,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public void notifyLibrarians(String title, String message, NotificationType type, Long referenceId) {
+    public void notifyLibrarians(String title, String message, NotificationType type, String referenceId) {
         List<User> staff = userRepository.findByRoleIn(List.of(Role.ADMIN, Role.MANAGER));
         for (User librarian : staff) {
             sendNotification(librarian, title, message, type, referenceId);
@@ -72,7 +71,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public NotificationResponse markAsRead(Long notificationId, User user) {
+    public NotificationResponse markAsRead(String notificationId, User user) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found with id: " + notificationId));
 
@@ -91,12 +90,20 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public int markAllAsRead(User user) {
-        return notificationRepository.markAllAsReadForRecipient(user, Instant.now());
+        List<Notification> unread = notificationRepository.findByRecipientAndIsReadFalse(user);
+        if (unread.isEmpty()) {
+            return 0;
+        }
+        for (Notification notification : unread) {
+            notification.markAsRead();
+        }
+        notificationRepository.saveAll(unread);
+        return unread.size();
     }
 
     @Override
     @Transactional
-    public void deleteNotification(Long notificationId, User user) {
+    public void deleteNotification(String notificationId, User user) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found with id: " + notificationId));
 
@@ -111,9 +118,8 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public int clearAllNotifications(User user) {
-        int clearedCount = notificationRepository.deleteAllByRecipient(user);
+        long clearedCount = notificationRepository.deleteByRecipient(user);
         log.info("Cleared {} notifications for recipient {}.", clearedCount, user.getEmail());
-        return clearedCount;
+        return (int) clearedCount;
     }
 }
-

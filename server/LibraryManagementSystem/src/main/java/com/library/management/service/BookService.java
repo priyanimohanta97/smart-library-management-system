@@ -9,10 +9,7 @@ public interface BookService {
 
     List<BookResponse> getAllBooks(String query, String category);
 
-    BookResponse getBookById(Long id);
+    BookResponse getBookById(String id);
 
-    Book getBookEntityById(Long id);
-
-    Book getBookEntityByIdForUpdate(Long id);
+    Book getBookEntityById(String id);
 }
-

@@ -2,6 +2,7 @@ package com.library.management;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.library.management.config.BorrowingPolicyConfig;
+import com.library.management.config.MongoTestServerConfig;
 import com.library.management.dto.LoanRequestDto;
 import com.library.management.dto.RejectLoanDto;
 import com.library.management.entity.Book;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -47,6 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(MongoTestServerConfig.class)
 class LoanAndNotificationIntegrationTest {
 
     @Autowired
@@ -180,7 +183,7 @@ class LoanAndNotificationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.bookId").value(testBookAvailable.getId()))
                 .andExpect(jsonPath("$.status").value("PENDING"))
                 .andExpect(jsonPath("$.studentName").value("Alice Walker"));
@@ -359,8 +362,8 @@ class LoanAndNotificationIntegrationTest {
     @Test
     @DisplayName("Notifications endpoints: unread count, listing, marking read, marking all read")
     void testNotificationsLifecycle() throws Exception {
-        notificationRepository.save(new Notification(student1, "Title 1", "Message 1", NotificationType.LOAN_APPROVED, 101L));
-        Notification n2 = notificationRepository.save(new Notification(student1, "Title 2", "Message 2", NotificationType.RETURN_CONFIRMED, 102L));
+        notificationRepository.save(new Notification(student1, "Title 1", "Message 1", NotificationType.LOAN_APPROVED, "101"));
+        Notification n2 = notificationRepository.save(new Notification(student1, "Title 2", "Message 2", NotificationType.RETURN_CONFIRMED, "102"));
 
         // 1. Fetch unread count
         mockMvc.perform(get("/api/notifications/unread-count")
@@ -454,7 +457,7 @@ class LoanAndNotificationIntegrationTest {
         notificationRepository.save(new Notification(student1, "Alert 2", "Message 2", NotificationType.RETURN_REQUEST, loan1.getId()));
 
         // Student2 also has a notification
-        Notification student2Notif = notificationRepository.save(new Notification(student2, "Student 2 Alert", "Message for student 2", NotificationType.LOAN_REQUEST, 999L));
+        Notification student2Notif = notificationRepository.save(new Notification(student2, "Student 2 Alert", "Message for student 2", NotificationType.LOAN_REQUEST, "999"));
 
         // Student1 executes Clear All
         mockMvc.perform(delete("/api/notifications")
@@ -481,7 +484,7 @@ class LoanAndNotificationIntegrationTest {
     @DisplayName("Notification Authorization: Users cannot delete other users' notifications, unauthenticated requests rejected")
     void testNotificationDeletionAuthorization() throws Exception {
         Notification student1Notif = notificationRepository.save(
-                new Notification(student1, "Private Alert", "Personal loan alert", NotificationType.LOAN_APPROVED, 555L));
+                new Notification(student1, "Private Alert", "Personal loan alert", NotificationType.LOAN_APPROVED, "555"));
 
         // 1. Student2 attempts to delete student1's notification -> 403 Forbidden
         mockMvc.perform(delete("/api/notifications/" + student1Notif.getId())
@@ -536,8 +539,8 @@ class LoanAndNotificationIntegrationTest {
         loanB.setStatus(LoanStatus.PENDING);
         loanB = loanRepository.save(loanB);
 
-        final Long loanAId = loanA.getId();
-        final Long loanBId = loanB.getId();
+        final String loanAId = loanA.getId();
+        final String loanBId = loanB.getId();
 
         int numberOfThreads = 2;
         ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
@@ -610,8 +613,8 @@ class LoanAndNotificationIntegrationTest {
         Book bookB = new Book("CONC-B02", "Book B", "Author B", "philosophy", "B02", 2);
         bookB = bookRepository.save(bookB);
 
-        final Long bookAId = bookA.getId();
-        final Long bookBId = bookB.getId();
+        final String bookAId = bookA.getId();
+        final String bookBId = bookB.getId();
         final User targetStudent = student1;
 
         int numberOfThreads = 2;
@@ -680,7 +683,7 @@ class LoanAndNotificationIntegrationTest {
         overdueLoan.setIssueDate(Instant.now().minus(20, ChronoUnit.DAYS));
         overdueLoan.setDueDate(Instant.now().minus(6, ChronoUnit.DAYS));
         overdueLoan = loanRepository.save(overdueLoan);
-        final Long overdueLoanId = overdueLoan.getId();
+        final String overdueLoanId = overdueLoan.getId();
 
         // First run of scheduler: should find overdue loan and dispatch notification
         int processedFirst = overdueLoanScheduler.processOverdueLoans();

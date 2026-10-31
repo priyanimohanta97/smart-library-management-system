@@ -1,48 +1,40 @@
 package com.library.management.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
 import java.util.Objects;
 
-@Entity
-@Table(name = "users")
+@Document(collection = "users")
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(name = "full_name", nullable = false, length = 100)
+    @Field("full_name")
     private String fullName;
 
-    @Column(name = "email", nullable = false, unique = true, length = 120)
+    @Indexed(unique = true)
+    @Field("email")
     private String email;
 
-    @Column(name = "password", nullable = false, length = 255)
+    @Field("password")
     private String password;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false, length = 20)
+    @Field("role")
     private Role role;
 
-    @Column(name = "enabled", nullable = false)
+    @Field("enabled")
     private boolean enabled = true;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    @Field("created_at")
+    private Instant createdAt = Instant.now();
 
-    @Column(name = "updated_at")
-    private Instant updatedAt;
+    @Field("updated_at")
+    private Instant updatedAt = Instant.now();
 
     public User() {
     }
@@ -53,24 +45,15 @@ public class User {
         this.password = password;
         this.role = role;
         this.enabled = true;
-    }
-
-    @PrePersist
-    protected void onCreate() {
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = Instant.now();
-    }
-
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -145,7 +128,7 @@ public class User {
     @Override
     public String toString() {
         return "User{" +
-                "id=" + id +
+                "id='" + id + '\'' +
                 ", fullName='" + fullName + '\'' +
                 ", email='" + email + '\'' +
                 ", role=" + role +
@@ -154,4 +137,3 @@ public class User {
                 '}';
     }
 }
-

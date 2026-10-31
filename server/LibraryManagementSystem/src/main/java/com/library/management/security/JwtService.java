@@ -62,7 +62,7 @@ public class JwtService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(String email, String role, Long userId, String fullName) {
+    public String generateToken(String email, String role, String userId, String fullName) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", role);
         claims.put("userId", userId);
@@ -89,10 +89,10 @@ public class JwtService {
         return claims != null ? claims.get("role", String.class) : null;
     }
 
-    public Long extractUserId(String token) {
+    public String extractUserId(String token) {
         Claims claims = extractAllClaims(token);
         if (claims != null && claims.get("userId") != null) {
-            return Long.valueOf(claims.get("userId").toString());
+            return claims.get("userId").toString();
         }
         return null;
     }

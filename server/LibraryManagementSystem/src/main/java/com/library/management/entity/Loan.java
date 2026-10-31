@@ -1,69 +1,54 @@
 package com.library.management.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
 import java.util.Objects;
 
-@Entity
-@Table(name = "loans")
+@Document(collection = "loans")
 public class Loan {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @DocumentReference
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "book_id", nullable = false)
+    @DocumentReference
     private Book book;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 30)
+    @Field("status")
     private LoanStatus status = LoanStatus.PENDING;
 
-    @Column(name = "request_date", nullable = false)
-    private Instant requestDate;
+    @Field("request_date")
+    private Instant requestDate = Instant.now();
 
-    @Column(name = "issue_date")
+    @Field("issue_date")
     private Instant issueDate;
 
-    @Column(name = "due_date")
+    @Field("due_date")
     private Instant dueDate;
 
-    @Column(name = "return_date")
+    @Field("return_date")
     private Instant returnDate;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "approved_by_id")
+    @DocumentReference
     private User approvedBy;
 
-    @Column(name = "rejection_reason", length = 500)
+    @Field("rejection_reason")
     private String rejectionReason;
 
-    @Column(name = "notes", length = 500)
+    @Field("notes")
     private String notes;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    @Field("created_at")
+    private Instant createdAt = Instant.now();
 
-    @Column(name = "updated_at")
-    private Instant updatedAt;
+    @Field("updated_at")
+    private Instant updatedAt = Instant.now();
 
     public Loan() {
     }
@@ -78,19 +63,7 @@ public class Loan {
         this.notes = notes;
         this.status = LoanStatus.PENDING;
         this.requestDate = Instant.now();
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        if (this.requestDate == null) {
-            this.requestDate = Instant.now();
-        }
         this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
         this.updatedAt = Instant.now();
     }
 
@@ -98,11 +71,11 @@ public class Loan {
         return this.status == LoanStatus.ISSUED && this.dueDate != null && now.isAfter(this.dueDate);
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 

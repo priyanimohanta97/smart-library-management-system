@@ -52,12 +52,12 @@ class JwtServiceTest {
     void testValidSecretGeneratesTokenAndExtractsClaims() {
         JwtService service = new JwtService(VALID_TEST_SECRET, 3600000L);
 
-        String token = service.generateToken("hypatia@alexandria.edu", "MANAGER", 77L, "Hypatia of Alexandria");
+        String token = service.generateToken("hypatia@alexandria.edu", "MANAGER", "77", "Hypatia of Alexandria");
 
         assertNotNull(token);
         assertEquals("hypatia@alexandria.edu", service.extractUsername(token));
         assertEquals("MANAGER", service.extractRole(token));
-        assertEquals(77L, service.extractUserId(token));
+        assertEquals("77", service.extractUserId(token));
         assertTrue(service.validateToken(token));
 
         UserDetails userDetails = new User(
@@ -73,7 +73,7 @@ class JwtServiceTest {
     void testTamperedTokenRejected() {
         JwtService service = new JwtService(VALID_TEST_SECRET, 3600000L);
 
-        String token = service.generateToken("scholar@library.edu", "USER", 1L, "Scholar");
+        String token = service.generateToken("scholar@library.edu", "USER", "1", "Scholar");
         String tamperedToken = token.substring(0, token.length() - 5) + "abcde";
 
         assertFalse(service.validateToken(tamperedToken));
@@ -85,7 +85,7 @@ class JwtServiceTest {
         // Expiration in the past (-10 seconds)
         JwtService service = new JwtService(VALID_TEST_SECRET, -10000L);
 
-        String expiredToken = service.generateToken("expired@library.edu", "USER", 2L, "Expired User");
+        String expiredToken = service.generateToken("expired@library.edu", "USER", "2", "Expired User");
 
         assertFalse(service.validateToken(expiredToken));
 
@@ -97,4 +97,3 @@ class JwtServiceTest {
         assertFalse(service.isTokenValid(expiredToken, userDetails));
     }
 }
-

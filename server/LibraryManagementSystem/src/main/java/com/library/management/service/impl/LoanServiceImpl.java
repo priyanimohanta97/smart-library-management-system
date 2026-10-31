@@ -17,6 +17,11 @@ import com.library.management.repository.LoanRepository;
 import com.library.management.repository.UserRepository;
 import com.library.management.service.LoanService;
 import com.library.management.service.NotificationService;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +38,7 @@ public class LoanServiceImpl implements LoanService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final BorrowingPolicyConfig borrowingPolicyConfig;
+    private final MongoTemplate mongoTemplate;
 
     private static final List<LoanStatus> ACTIVE_STATUSES = List.of(
             LoanStatus.PENDING,
@@ -45,13 +51,15 @@ public class LoanServiceImpl implements LoanService {
             BookRepository bookRepository,
             UserRepository userRepository,
             NotificationService notificationService,
-            BorrowingPolicyConfig borrowingPolicyConfig
+            BorrowingPolicyConfig borrowingPolicyConfig,
+            MongoTemplate mongoTemplate
     ) {
         this.loanRepository = loanRepository;
         this.bookRepository = bookRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.borrowingPolicyConfig = borrowingPolicyConfig;
+        this.mongoTemplate = mongoTemplate;
     }
 
     @Override
@@ -61,45 +69,49 @@ public class LoanServiceImpl implements LoanService {
             throw new AccessDeniedException("Authentication required to submit book loan request.");
         }
 
-        // 1. Lock student user record using row-level pessimistic write lock (SELECT ... FOR UPDATE)
-        // to strictly serialize capacity counting and duplicate checks across concurrent requests
-        User lockedStudent = userRepository.findByIdForUpdate(student.getId())
+        // 1. Verify student exists
+        User currentStudent = userRepository.findById(student.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Student user not found with id: " + student.getId()));
 
-        long activeCount = loanRepository.countByUserAndStatusIn(lockedStudent, ACTIVE_STATUSES);
-        if (activeCount >= borrowingPolicyConfig.getMaxActiveLoans()) {
-            throw new LoanOperationException(
-                    "Borrowing capacity reached: maximum of " + borrowingPolicyConfig.getMaxActiveLoans() +
-                    " combined active loans and pending requests permitted."
-            );
+        Loan loan;
+        Book book;
+        // Synchronize per student to protect capacity limit invariant against concurrent requests
+        synchronized (("loan-student-" + currentStudent.getId()).intern()) {
+            long activeCount = loanRepository.countByUserAndStatusIn(currentStudent, ACTIVE_STATUSES);
+            if (activeCount >= borrowingPolicyConfig.getMaxActiveLoans()) {
+                throw new LoanOperationException(
+                        "Borrowing capacity reached: maximum of " + borrowingPolicyConfig.getMaxActiveLoans() +
+                        " combined active loans and pending requests permitted."
+                );
+            }
+
+            // 2. Validate book existence
+            book = bookRepository.findById(dto.getBookId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + dto.getBookId()));
+
+            // 3. Prevent duplicate active loans or pending requests for the same book
+            if (loanRepository.existsByUserAndBookAndStatusIn(currentStudent, book, ACTIVE_STATUSES)) {
+                throw new LoanOperationException(
+                        "You already have an active loan or pending request for '" + book.getTitle() + "'.", 409
+                );
+            }
+
+            // 4. Validate initial inventory availability
+            if (book.getCopiesAvailable() <= 0) {
+                throw new LoanOperationException(
+                        "No physical copies currently available for '" + book.getTitle() + "' in the library stacks.", 400
+                );
+            }
+
+            // 5. Persist Loan in PENDING status
+            loan = new Loan(currentStudent, book, dto.getNotes());
+            loan = loanRepository.save(loan);
         }
 
-        // 2. Validate book existence
-        Book book = bookRepository.findById(dto.getBookId())
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + dto.getBookId()));
-
-        // 3. Prevent duplicate active loans or pending requests for the same book
-        if (loanRepository.existsByUserAndBookAndStatusIn(lockedStudent, book, ACTIVE_STATUSES)) {
-            throw new LoanOperationException(
-                    "You already have an active loan or pending request for '" + book.getTitle() + "'.", 409
-            );
-        }
-
-        // 4. Validate initial inventory availability
-        if (book.getCopiesAvailable() <= 0) {
-            throw new LoanOperationException(
-                    "No physical copies currently available for '" + book.getTitle() + "' in the library stacks.", 400
-            );
-        }
-
-        // 5. Persist Loan in PENDING status
-        Loan loan = new Loan(lockedStudent, book, dto.getNotes());
-        loan = loanRepository.save(loan);
-
-        // 6. Notify librarians in the same transaction
+        // 6. Notify librarians in the same flow
         notificationService.notifyLibrarians(
                 "New Book Loan Request",
-                lockedStudent.getFullName() + " requested a loan for '" + book.getTitle() + "'.",
+                currentStudent.getFullName() + " requested a loan for '" + book.getTitle() + "'.",
                 NotificationType.LOAN_REQUEST,
                 loan.getId()
         );
@@ -109,7 +121,7 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
-    public LoanResponse approveLoan(Long loanId, User librarian) {
+    public LoanResponse approveLoan(String loanId, User librarian) {
         Loan loan = loanRepository.findById(loanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Loan not found with id: " + loanId));
 
@@ -117,51 +129,60 @@ public class LoanServiceImpl implements LoanService {
             throw new LoanOperationException("Cannot approve loan: current status is " + loan.getStatus() + ". Only PENDING requests can be approved.");
         }
 
-        // Lock student user row first to serialize capacity re-check across concurrent approvals
+        // Recheck student capacity without double-counting the current loan being approved
         User student = loan.getUser();
         if (student != null) {
-            userRepository.findByIdForUpdate(student.getId())
+            userRepository.findById(student.getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Student user not found with id: " + student.getId()));
+
+            synchronized (("loan-student-" + student.getId()).intern()) {
+                long otherActiveCount = loanRepository.countByUserAndStatusInAndIdNot(student, ACTIVE_STATUSES, loanId);
+                if (otherActiveCount >= borrowingPolicyConfig.getMaxActiveLoans()) {
+                    throw new LoanOperationException(
+                            "Approval failed: Student has reached the borrowing capacity limit (" +
+                            borrowingPolicyConfig.getMaxActiveLoans() + " active/pending loans)."
+                    );
+                }
+            }
         }
 
-        // Recheck student capacity without double-counting the current loan being approved
-        long otherActiveCount = loanRepository.countByUserAndStatusInAndIdNot(student, ACTIVE_STATUSES, loanId);
-        if (otherActiveCount >= borrowingPolicyConfig.getMaxActiveLoans()) {
+        // Concurrency Guard: Atomic inventory decrement via MongoDB findAndModify with copiesAvailable > 0
+        final String targetBookId = loan.getBook().getId();
+        Query query = new Query(Criteria.where("_id").is(targetBookId).and("copiesAvailable").gt(0));
+        Update update = new Update().inc("copiesAvailable", -1);
+        Book updatedBook = mongoTemplate.findAndModify(query, update, FindAndModifyOptions.options().returnNew(true), Book.class);
+
+        if (updatedBook == null) {
+            if (!bookRepository.existsById(targetBookId)) {
+                throw new ResourceNotFoundException("Book not found with id: " + targetBookId);
+            }
             throw new LoanOperationException(
-                    "Approval failed: Student has reached the borrowing capacity limit (" +
-                    borrowingPolicyConfig.getMaxActiveLoans() + " active/pending loans)."
+                    "Approval failed: No physical copies available in inventory for '" + loan.getBook().getTitle() + "'."
             );
         }
 
-        // Concurrency Lock: Acquire row-level pessimistic write lock on Book (SELECT ... FOR UPDATE)
-        final Long targetBookId = loan.getBook().getId();
-        Book book = bookRepository.findByIdForUpdate(targetBookId)
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + targetBookId));
-
-        if (book.getCopiesAvailable() <= 0) {
-            throw new LoanOperationException(
-                    "Approval failed: No physical copies available in inventory for '" + book.getTitle() + "'."
-            );
-        }
-
-        // Atomically decrement inventory
-        book.decrementCopiesAvailable();
-        bookRepository.save(book);
-
-        // Update loan record
+        // Update loan record with inventory compensation on persistence failure
         Instant now = Instant.now();
-        loan.setStatus(LoanStatus.ISSUED);
-        loan.setIssueDate(now);
-        loan.setDueDate(now.plus(Duration.ofDays(borrowingPolicyConfig.getLoanDurationDays())));
-        loan.setApprovedBy(librarian);
-        loan = loanRepository.save(loan);
+        try {
+            loan.setStatus(LoanStatus.ISSUED);
+            loan.setIssueDate(now);
+            loan.setDueDate(now.plus(Duration.ofDays(borrowingPolicyConfig.getLoanDurationDays())));
+            loan.setApprovedBy(librarian);
+            loan = loanRepository.save(loan);
+        } catch (Exception ex) {
+            // Compensate inventory decrement if loan persistence fails
+            Query revertQuery = new Query(Criteria.where("_id").is(targetBookId));
+            Update revertUpdate = new Update().inc("copiesAvailable", 1);
+            mongoTemplate.findAndModify(revertQuery, revertUpdate, Book.class);
+            throw ex;
+        }
 
-        // Co-located notification to the student
+        // Notification to the student
         notificationService.sendNotification(
                 loan.getUser(),
                 "Loan Request Approved",
-                "Your loan request for '" + book.getTitle() + "' was approved. Please collect it from " +
-                (book.getLocation() != null ? book.getLocation() : "the main circulation desk") + ".",
+                "Your loan request for '" + updatedBook.getTitle() + "' was approved. Please collect it from " +
+                (updatedBook.getLocation() != null ? updatedBook.getLocation() : "the main circulation desk") + ".",
                 NotificationType.LOAN_APPROVED,
                 loan.getId()
         );
@@ -171,7 +192,7 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
-    public LoanResponse rejectLoan(Long loanId, RejectLoanDto dto, User librarian) {
+    public LoanResponse rejectLoan(String loanId, RejectLoanDto dto, User librarian) {
         Loan loan = loanRepository.findById(loanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Loan not found with id: " + loanId));
 
@@ -184,7 +205,7 @@ public class LoanServiceImpl implements LoanService {
         loan.setApprovedBy(librarian);
         loan = loanRepository.save(loan);
 
-        // Co-located notification to the student
+        // Notification to the student
         notificationService.sendNotification(
                 loan.getUser(),
                 "Loan Request Declined",
@@ -198,7 +219,7 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
-    public LoanResponse requestReturn(Long loanId, User student) {
+    public LoanResponse requestReturn(String loanId, User student) {
         Loan loan = loanRepository.findById(loanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Loan not found with id: " + loanId));
 
@@ -226,7 +247,7 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
-    public LoanResponse confirmReturn(Long loanId, User librarian) {
+    public LoanResponse confirmReturn(String loanId, User librarian) {
         Loan loan = loanRepository.findById(loanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Loan not found with id: " + loanId));
 
@@ -234,20 +255,30 @@ public class LoanServiceImpl implements LoanService {
             throw new LoanOperationException("Cannot confirm return: loan is currently in status " + loan.getStatus() + ". Expected RETURN_PENDING or ISSUED.");
         }
 
-        // Concurrency Lock: Lock book row before incrementing inventory
-        final Long targetBookId = loan.getBook().getId();
-        Book book = bookRepository.findByIdForUpdate(targetBookId)
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + targetBookId));
+        // Concurrency Guard: Atomic inventory increment via MongoDB findAndModify
+        final String targetBookId = loan.getBook().getId();
+        Query query = new Query(Criteria.where("_id").is(targetBookId));
+        Update update = new Update().inc("copiesAvailable", 1);
+        Book book = mongoTemplate.findAndModify(query, update, FindAndModifyOptions.options().returnNew(true), Book.class);
 
-        book.incrementCopiesAvailable();
-        bookRepository.save(book);
+        if (book == null) {
+            throw new ResourceNotFoundException("Book not found with id: " + targetBookId);
+        }
 
         Instant now = Instant.now();
-        loan.setStatus(LoanStatus.RETURNED);
-        loan.setReturnDate(now);
-        loan = loanRepository.save(loan);
+        try {
+            loan.setStatus(LoanStatus.RETURNED);
+            loan.setReturnDate(now);
+            loan = loanRepository.save(loan);
+        } catch (Exception ex) {
+            // Compensate inventory increment if loan persistence fails
+            Query revertQuery = new Query(Criteria.where("_id").is(targetBookId));
+            Update revertUpdate = new Update().inc("copiesAvailable", -1);
+            mongoTemplate.findAndModify(revertQuery, revertUpdate, Book.class);
+            throw ex;
+        }
 
-        // Co-located notification to the student
+        // Notification to the student
         notificationService.sendNotification(
                 loan.getUser(),
                 "Book Return Confirmed",

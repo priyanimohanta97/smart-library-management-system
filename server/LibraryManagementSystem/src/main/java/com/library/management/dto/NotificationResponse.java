@@ -7,11 +7,11 @@ import java.time.Instant;
 
 public class NotificationResponse {
 
-    private Long id;
+    private String id;
     private String title;
     private String message;
     private NotificationType type;
-    private Long referenceId;
+    private String referenceId;
     @com.fasterxml.jackson.annotation.JsonProperty("isRead")
     private boolean isRead;
     private Instant createdAt;
@@ -34,11 +34,11 @@ public class NotificationResponse {
         return dto;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -66,11 +66,11 @@ public class NotificationResponse {
         this.type = type;
     }
 
-    public Long getReferenceId() {
+    public String getReferenceId() {
         return referenceId;
     }
 
-    public void setReferenceId(Long referenceId) {
+    public void setReferenceId(String referenceId) {
         this.referenceId = referenceId;
     }
 

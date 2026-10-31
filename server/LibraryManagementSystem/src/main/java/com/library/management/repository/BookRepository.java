@@ -1,18 +1,15 @@
 package com.library.management.repository;
 
 import com.library.management.entity.Book;
-import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface BookRepository extends JpaRepository<Book, Long> {
+public interface BookRepository extends MongoRepository<Book, String> {
 
     Optional<Book> findByCode(String code);
 
@@ -22,21 +19,13 @@ public interface BookRepository extends JpaRepository<Book, Long> {
 
     boolean existsByTitleIgnoreCaseAndAuthorIgnoreCase(String title, String author);
 
-    /**
-     * Acquires a row-level pessimistic write lock (SELECT ... FOR UPDATE)
-     * to protect copiesAvailable against concurrent over-issuing during approvals and returns.
-     */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT b FROM Book b WHERE b.id = :id")
-    Optional<Book> findByIdForUpdate(@Param("id") Long id);
-
     List<Book> findByCategoryIgnoreCase(String category);
 
-    @Query("SELECT b FROM Book b WHERE " +
-           "LOWER(b.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(b.author) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(b.callNumber) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(b.category) LIKE LOWER(CONCAT('%', :query, '%'))")
-    List<Book> searchBooks(@Param("query") String query);
+    @Query("{ '$or': [ " +
+            "{ 'title': { '$regex': ?0, '$options': 'i' } }, " +
+            "{ 'author': { '$regex': ?0, '$options': 'i' } }, " +
+            "{ 'callNumber': { '$regex': ?0, '$options': 'i' } }, " +
+            "{ 'category': { '$regex': ?0, '$options': 'i' } } " +
+            "] }")
+    List<Book> searchBooks(String query);
 }
-

@@ -1,12 +1,12 @@
 package com.library.management.dto;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public class LoanRequestDto {
 
-    @NotNull(message = "Book ID is required")
-    private Long bookId;
+    @NotBlank(message = "Book ID is required")
+    private String bookId;
 
     @Size(max = 500, message = "Notes cannot exceed 500 characters")
     private String notes;
@@ -14,16 +14,16 @@ public class LoanRequestDto {
     public LoanRequestDto() {
     }
 
-    public LoanRequestDto(Long bookId, String notes) {
+    public LoanRequestDto(String bookId, String notes) {
         this.bookId = bookId;
         this.notes = notes;
     }
 
-    public Long getBookId() {
+    public String getBookId() {
         return bookId;
     }
 
-    public void setBookId(Long bookId) {
+    public void setBookId(String bookId) {
         this.bookId = bookId;
     }
 
@@ -35,4 +35,3 @@ public class LoanRequestDto {
         this.notes = notes;
     }
 }
-

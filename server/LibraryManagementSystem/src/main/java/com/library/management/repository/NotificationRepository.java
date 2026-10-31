@@ -3,33 +3,21 @@ package com.library.management.repository;
 import com.library.management.entity.Notification;
 import com.library.management.entity.NotificationType;
 import com.library.management.entity.User;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
-import java.time.Instant;
 import java.util.List;
 
 @Repository
-public interface NotificationRepository extends JpaRepository<Notification, Long> {
+public interface NotificationRepository extends MongoRepository<Notification, String> {
 
     List<Notification> findByRecipientOrderByCreatedAtDesc(User recipient);
 
     long countByRecipientAndIsReadFalse(User recipient);
 
-    /**
-     * Prevents duplicate notification records on retried requests or duplicate events.
-     */
-    boolean existsByRecipientAndTypeAndReferenceId(User recipient, NotificationType type, Long referenceId);
+    List<Notification> findByRecipientAndIsReadFalse(User recipient);
 
-    @Modifying
-    @Query("UPDATE Notification n SET n.isRead = true, n.readAt = :now WHERE n.recipient = :recipient AND n.isRead = false")
-    int markAllAsReadForRecipient(@Param("recipient") User recipient, @Param("now") Instant now);
+    boolean existsByRecipientAndTypeAndReferenceId(User recipient, NotificationType type, String referenceId);
 
-    @Modifying
-    @Query("DELETE FROM Notification n WHERE n.recipient = :recipient")
-    int deleteAllByRecipient(@Param("recipient") User recipient);
+    long deleteByRecipient(User recipient);
 }
-

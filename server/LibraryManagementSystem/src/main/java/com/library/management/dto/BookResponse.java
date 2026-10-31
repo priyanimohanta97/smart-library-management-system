@@ -8,7 +8,7 @@ import java.util.List;
 
 public class BookResponse {
 
-    private Long id;
+    private String id;
     private String code;
     private String title;
     private String subtitle;
@@ -69,11 +69,11 @@ public class BookResponse {
         return dto;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -237,4 +237,3 @@ public class BookResponse {
         this.tags = tags;
     }
 }
-

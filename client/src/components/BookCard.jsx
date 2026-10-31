@@ -10,7 +10,7 @@ export default function BookCard({
   onQuickReserve
 }) {
   const isAvailable = book.status === 'Available';
-  const isFallback = typeof book.id !== 'number' || Boolean(book.isFallback);
+  const isFallback = Boolean(book.isFallback) || (typeof book.id === 'string' && book.id.startsWith('book-'));
 
   return (
     <article className="group bg-white rounded-xl border border-[#DCE7F5] hover:border-[#2563EB] shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden h-full">

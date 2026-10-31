@@ -1,5 +1,6 @@
 package com.library.management;
 
+import com.library.management.config.MongoTestServerConfig;
 import com.library.management.entity.Role;
 import com.library.management.entity.User;
 import com.library.management.repository.UserRepository;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(MongoTestServerConfig.class)
 class SecurityAndControllerIntegrationTest {
 
     @Autowired
@@ -101,7 +104,7 @@ class SecurityAndControllerIntegrationTest {
             {
                 "fullName": "",
                 "email": "not-an-email",
-                "password": "123"
+                "password": "short"
             }
             """;
 
@@ -117,26 +120,25 @@ class SecurityAndControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("Endpoint: POST /api/auth/register rejects duplicate email with 409 Conflict")
-    void testRegisterEndpointDuplicateEmail() throws Exception {
-        String duplicateJson = """
+    @DisplayName("Endpoint: POST /api/auth/register enforces minimum password length of 8 chars")
+    void testRegisterPasswordTooShort() throws Exception {
+        String shortPasswordJson = """
             {
-                "fullName": "Duplicate Reader",
-                "email": "reader@library.edu",
-                "password": "anotherPassword123"
+                "fullName": "Gottfried Leibniz",
+                "email": "leibniz@hannover.de",
+                "password": "calc7"
             }
             """;
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(duplicateJson))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.status", is(409)))
-                .andExpect(jsonPath("$.message", containsString("reader@library.edu already exists")));
+                        .content(shortPasswordJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.validationErrors.password").exists());
     }
 
     @Test
-    @DisplayName("Endpoint: POST /api/auth/login succeeds with valid credentials and issues JWT")
+    @DisplayName("Endpoint: POST /api/auth/login returns token and user data on valid credentials")
     void testLoginEndpointSuccess() throws Exception {
         String loginJson = """
             {
@@ -152,10 +154,11 @@ class SecurityAndControllerIntegrationTest {
                 .andExpect(jsonPath("$.token").isString())
                 .andExpect(jsonPath("$.tokenType", is("Bearer")))
                 .andExpect(jsonPath("$.expiresInMs").isNumber())
+                .andExpect(jsonPath("$.user.id").exists())
                 .andExpect(jsonPath("$.user.email", is("reader@library.edu")))
                 .andExpect(jsonPath("$.user.role", is("USER")))
-                .andExpect(jsonPath("$.password").doesNotExist())
-                .andExpect(jsonPath("$.user.password").doesNotExist());
+                .andExpect(jsonPath("$.user.password").doesNotExist())
+                .andExpect(jsonPath("$.user.passwordHash").doesNotExist());
     }
 
     @Test
@@ -164,7 +167,7 @@ class SecurityAndControllerIntegrationTest {
         String loginJson = """
             {
                 "email": "reader@library.edu",
-                "password": "wrongPasswordXYZ"
+                "password": "wrongPassword123"
             }
             """;
 
@@ -177,82 +180,85 @@ class SecurityAndControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("Security: Unauthenticated access to /api/users/me is rejected with 401")
-    void testUnauthenticatedAccessRejected() throws Exception {
-        mockMvc.perform(get("/api/users/me"))
+    @DisplayName("Endpoint: POST /api/auth/login rejects unknown email with 401 Unauthorized")
+    void testLoginEndpointUnknownEmail() throws Exception {
+        String loginJson = """
+            {
+                "email": "ghost@library.edu",
+                "password": "anyPassword123"
+            }
+            """;
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
-                .andExpect(jsonPath("$.error", is("Unauthorized")));
+                .andExpect(jsonPath("$.message", is("Invalid email or password")));
     }
 
     @Test
-    @DisplayName("Security: Authenticated access to /api/users/me with valid Bearer token returns profile")
-    void testAuthenticatedIdentityEndpoint() throws Exception {
-        mockMvc.perform(get("/api/users/me")
-                        .header("Authorization", userToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email", is("reader@library.edu")))
-                .andExpect(jsonPath("$.fullName", is("Standard Reader")))
-                .andExpect(jsonPath("$.role", is("USER")));
+    @DisplayName("Endpoint: POST /api/auth/login rejects blank fields with 400 Bad Request")
+    void testLoginEndpointValidationFailure() throws Exception {
+        String invalidJson = """
+            {
+                "email": "bad-email",
+                "password": ""
+            }
+            """;
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.error", is("Bad Request")));
     }
 
     @Test
-    @DisplayName("Role Authorization: USER role cannot access manager or admin endpoints (403 Forbidden)")
-    void testUserRoleForbiddenFromPrivilegedEndpoints() throws Exception {
-        // USER trying to access Manager endpoint
-        mockMvc.perform(get("/api/users/manager/test")
-                        .header("Authorization", userToken))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.status", is(403)));
-
-        // USER trying to access Admin endpoint
-        mockMvc.perform(get("/api/users/admin/test")
-                        .header("Authorization", userToken))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.status", is(403)));
+    @DisplayName("Security: Protected GET /api/loans/my-loans rejects missing Authorization header with 401")
+    void testProtectedEndpointRejectsUnauthenticated() throws Exception {
+        mockMvc.perform(get("/api/loans/my-loans"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("Role Authorization: MANAGER role can access manager endpoint but not admin endpoint")
-    void testManagerRolePermissions() throws Exception {
-        // MANAGER accessing Manager endpoint -> 200 OK
-        mockMvc.perform(get("/api/users/manager/test")
+    @DisplayName("Security: Protected GET /api/loans/my-loans rejects invalid JWT signature with 401")
+    void testProtectedEndpointRejectsInvalidToken() throws Exception {
+        mockMvc.perform(get("/api/loans/my-loans")
+                        .header("Authorization", "Bearer invalid.fake.token.signature"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Security: Protected GET /api/loans/my-loans accepts valid USER JWT token")
+    void testProtectedEndpointAcceptsValidToken() throws Exception {
+        mockMvc.perform(get("/api/loans/my-loans")
+                        .header("Authorization", userToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("RBAC: Librarian GET /api/loans/pending allows MANAGER role")
+    void testLibrarianEndpointAllowsManager() throws Exception {
+        mockMvc.perform(get("/api/loans/pending")
                         .header("Authorization", managerToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status", is("authorized")))
-                .andExpect(jsonPath("$.scope", is("CIRCULATION_MANAGEMENT")));
-
-        // MANAGER accessing Admin endpoint -> 403 Forbidden
-        mockMvc.perform(get("/api/users/admin/test")
-                        .header("Authorization", managerToken))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.status", is(403)));
+                .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("Role Authorization: ADMIN role can access both manager and admin endpoints")
-    void testAdminRolePermissions() throws Exception {
-        // ADMIN accessing Manager endpoint -> 200 OK
-        mockMvc.perform(get("/api/users/manager/test")
+    @DisplayName("RBAC: Librarian GET /api/loans/pending allows ADMIN role")
+    void testLibrarianEndpointAllowsAdmin() throws Exception {
+        mockMvc.perform(get("/api/loans/pending")
                         .header("Authorization", adminToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status", is("authorized")));
-
-        // ADMIN accessing Admin endpoint -> 200 OK
-        mockMvc.perform(get("/api/users/admin/test")
-                        .header("Authorization", adminToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status", is("authorized")))
-                .andExpect(jsonPath("$.scope", is("FULL_SYSTEM_ADMINISTRATION")));
+                .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("Health Check: GET /api/health is publicly accessible without authentication")
-    void testHealthCheckEndpointPubliclyAccessible() throws Exception {
-        mockMvc.perform(get("/api/health"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status", is("UP")))
-                .andExpect(jsonPath("$.service", is("Athenaeum Library Management System")))
-                .andExpect(jsonPath("$.timestamp").exists());
+    @DisplayName("RBAC: Librarian GET /api/loans/pending forbids USER role with 403 Forbidden")
+    void testLibrarianEndpointForbidsUserRole() throws Exception {
+        mockMvc.perform(get("/api/loans/pending")
+                        .header("Authorization", userToken))
+                .andExpect(status().isForbidden());
     }
 }

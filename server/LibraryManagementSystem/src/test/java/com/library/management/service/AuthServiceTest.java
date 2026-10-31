@@ -54,7 +54,7 @@ class AuthServiceTest {
         when(passwordEncoder.encode("radioactivity123")).thenReturn("$2a$12$hashedPasswordExample");
 
         User savedUser = new User();
-        savedUser.setId(10L);
+        savedUser.setId("10");
         savedUser.setFullName("Marie Curie");
         savedUser.setEmail("marie@university.edu");
         savedUser.setPassword("$2a$12$hashedPasswordExample");
@@ -66,7 +66,7 @@ class AuthServiceTest {
         UserResponse response = authService.register(request);
 
         assertNotNull(response);
-        assertEquals(10L, response.getId());
+        assertEquals("10", response.getId());
         assertEquals("Marie Curie", response.getFullName());
         assertEquals("marie@university.edu", response.getEmail());
         assertEquals("USER", response.getRole());
@@ -89,7 +89,7 @@ class AuthServiceTest {
         when(passwordEncoder.encode("enigmaSecret789")).thenReturn("$2a$12$secureBcryptHash");
 
         User savedUser = new User("Alan Turing", "turing@cambridge.edu", "$2a$12$secureBcryptHash", Role.USER);
-        savedUser.setId(11L);
+        savedUser.setId("11");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
         authService.register(request);
@@ -121,7 +121,7 @@ class AuthServiceTest {
         when(passwordEncoder.encode(anyString())).thenReturn("$2a$12$hashed");
 
         User savedUser = new User("Sneaky Admin Attempt", "sneaky@library.edu", "$2a$12$hashed", Role.USER);
-        savedUser.setId(12L);
+        savedUser.setId("12");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
         UserResponse response = authService.register(request);
@@ -139,12 +139,12 @@ class AuthServiceTest {
         LoginRequest request = new LoginRequest("scholar@athenaeum.edu", "correctPassword");
 
         User user = new User("Scholar Reader", "scholar@athenaeum.edu", "$2a$12$storedHash", Role.USER);
-        user.setId(5L);
+        user.setId("5");
         user.setEnabled(true);
 
         when(userRepository.findByEmail("scholar@athenaeum.edu")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("correctPassword", "$2a$12$storedHash")).thenReturn(true);
-        when(jwtService.generateToken("scholar@athenaeum.edu", "USER", 5L, "Scholar Reader"))
+        when(jwtService.generateToken("scholar@athenaeum.edu", "USER", "5", "Scholar Reader"))
                 .thenReturn("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.validToken");
         when(jwtService.getExpirationMs()).thenReturn(86400000L);
 
@@ -171,7 +171,7 @@ class AuthServiceTest {
         when(passwordEncoder.matches("wrongPassword", "$2a$12$storedHash")).thenReturn(false);
 
         assertThrows(InvalidCredentialsException.class, () -> authService.login(request));
-        verify(jwtService, never()).generateToken(anyString(), anyString(), anyLong(), anyString());
+        verify(jwtService, never()).generateToken(anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -182,7 +182,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("unknown@library.edu")).thenReturn(Optional.empty());
 
         assertThrows(InvalidCredentialsException.class, () -> authService.login(request));
-        verify(jwtService, never()).generateToken(anyString(), anyString(), anyLong(), anyString());
+        verify(jwtService, never()).generateToken(anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -197,19 +197,19 @@ class AuthServiceTest {
         when(passwordEncoder.matches("password123", "$2a$12$hash")).thenReturn(true);
 
         assertThrows(InvalidCredentialsException.class, () -> authService.login(request));
-        verify(jwtService, never()).generateToken(anyString(), anyString(), anyLong(), anyString());
+        verify(jwtService, never()).generateToken(anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
     @DisplayName("9. Sensitive fields (password, passwordHash) are strictly absent from UserResponse")
     void testSensitiveFieldsAbsentFromUserResponse() {
         User user = new User("Ada Lovelace", "ada@analytical.org", "$2a$12$superSecretHash12345", Role.ADMIN);
-        user.setId(42L);
+        user.setId("42");
 
         UserResponse response = UserResponse.fromEntity(user);
 
         assertNotNull(response);
-        assertEquals(42L, response.getId());
+        assertEquals("42", response.getId());
         assertEquals("Ada Lovelace", response.getFullName());
         assertEquals("ada@analytical.org", response.getEmail());
         assertEquals("ADMIN", response.getRole());
@@ -227,4 +227,3 @@ class AuthServiceTest {
         }
     }
 }
-

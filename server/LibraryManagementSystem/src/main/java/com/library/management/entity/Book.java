@@ -1,91 +1,87 @@
 package com.library.management.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
 import java.util.Objects;
 
-@Entity
-@Table(name = "books")
+@Document(collection = "books")
 public class Book {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(name = "code", nullable = false, unique = true, length = 50)
+    @Indexed(unique = true)
+    @Field("code")
     private String code;
 
-    @Column(name = "title", nullable = false, length = 200)
+    @Field("title")
     private String title;
 
-    @Column(name = "subtitle", length = 300)
+    @Field("subtitle")
     private String subtitle;
 
-    @Column(name = "author", nullable = false, length = 150)
+    @Field("author")
     private String author;
 
-    @Column(name = "author_role", length = 150)
+    @Field("author_role")
     private String authorRole;
 
-    @Column(name = "publication_year")
+    @Field("publication_year")
     private Integer publicationYear;
 
-    @Column(name = "category", nullable = false, length = 50)
+    @Indexed
+    @Field("category")
     private String category;
 
-    @Column(name = "category_label", length = 80)
+    @Field("category_label")
     private String categoryLabel;
 
-    @Column(name = "cover_image", length = 500)
+    @Field("cover_image")
     private String coverImage;
 
-    @Column(name = "curator_quote", length = 500)
+    @Field("curator_quote")
     private String curatorQuote;
 
-    @Column(name = "call_number", nullable = false, length = 60)
+    @Field("call_number")
     private String callNumber;
 
-    @Column(name = "location", length = 120)
+    @Field("location")
     private String location;
 
-    @Column(name = "rating")
-    private Double rating = 4.8;
+    @Field("rating")
+    private Double rating;
 
-    @Column(name = "reviews_count")
-    private Integer reviewsCount = 100;
+    @Field("reviews_count")
+    private Integer reviewsCount;
 
-    @Column(name = "pages")
-    private Integer pages = 300;
+    @Field("pages")
+    private Integer pages;
 
-    @Column(name = "total_copies", nullable = false)
+    @Field("total_copies")
     private int totalCopies = 1;
 
-    @Column(name = "copies_available", nullable = false)
+    @Field("copies_available")
     private int copiesAvailable = 1;
 
-    @Column(name = "synopsis", length = 2000)
+    @Field("synopsis")
     private String synopsis;
 
-    @Column(name = "tags", length = 500)
+    @Field("tags")
     private String tags;
 
     @Version
     private Long version;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    @Field("created_at")
+    private Instant createdAt = Instant.now();
 
-    @Column(name = "updated_at")
-    private Instant updatedAt;
+    @Field("updated_at")
+    private Instant updatedAt = Instant.now();
 
     public Book() {
     }
@@ -98,16 +94,7 @@ public class Book {
         this.callNumber = callNumber;
         this.totalCopies = totalCopies;
         this.copiesAvailable = totalCopies;
-    }
-
-    @PrePersist
-    protected void onCreate() {
         this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
         this.updatedAt = Instant.now();
     }
 
@@ -120,21 +107,24 @@ public class Book {
             throw new IllegalStateException("Cannot decrement: no copies available for book " + this.title);
         }
         this.copiesAvailable--;
+        this.updatedAt = Instant.now();
     }
 
     public void incrementCopiesAvailable() {
         if (this.copiesAvailable >= this.totalCopies) {
             this.copiesAvailable = this.totalCopies;
+            this.updatedAt = Instant.now();
             return;
         }
         this.copiesAvailable++;
+        this.updatedAt = Instant.now();
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -326,4 +316,3 @@ public class Book {
         return Objects.hash(id, code);
     }
 }
-
