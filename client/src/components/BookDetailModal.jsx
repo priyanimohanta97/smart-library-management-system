@@ -30,7 +30,7 @@ export default function BookDetailModal({
   if (!isOpen || !book) return null;
 
   const isAvailable = book.status === 'Available';
-  const isFallback = isBorrowingDisabled || typeof book.id !== 'number';
+  const isFallback = isBorrowingDisabled || Boolean(book.isFallback) || (typeof book.id === 'string' && book.id.startsWith('book-'));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-book-title">

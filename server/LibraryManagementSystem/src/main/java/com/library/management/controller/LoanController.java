@@ -60,7 +60,7 @@ public class LoanController {
 
     @PostMapping("/{id}/return-request")
     public ResponseEntity<LoanResponse> requestReturn(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal UserDetails userDetails) {
         User student = getAuthenticatedUser(userDetails);
         return ResponseEntity.ok(loanService.requestReturn(id, student));
@@ -75,7 +75,7 @@ public class LoanController {
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<LoanResponse> approveLoan(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal UserDetails userDetails) {
         User librarian = getAuthenticatedUser(userDetails);
         return ResponseEntity.ok(loanService.approveLoan(id, librarian));
@@ -84,7 +84,7 @@ public class LoanController {
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<LoanResponse> rejectLoan(
-            @PathVariable Long id,
+            @PathVariable String id,
             @Valid @RequestBody RejectLoanDto rejectDto,
             @AuthenticationPrincipal UserDetails userDetails) {
         User librarian = getAuthenticatedUser(userDetails);
@@ -100,7 +100,7 @@ public class LoanController {
     @PostMapping("/{id}/confirm-return")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<LoanResponse> confirmReturn(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal UserDetails userDetails) {
         User librarian = getAuthenticatedUser(userDetails);
         return ResponseEntity.ok(loanService.confirmReturn(id, librarian));
@@ -118,4 +118,3 @@ public class LoanController {
         return ResponseEntity.ok(loanService.getCirculationStats());
     }
 }
-

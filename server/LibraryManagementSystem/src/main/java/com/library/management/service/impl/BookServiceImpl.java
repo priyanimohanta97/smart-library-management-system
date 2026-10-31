@@ -35,23 +35,15 @@ public class BookServiceImpl implements BookService {
 
     @Override
     @Transactional(readOnly = true)
-    public BookResponse getBookById(Long id) {
+    public BookResponse getBookById(String id) {
         Book book = getBookEntityById(id);
         return BookResponse.fromEntity(book);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Book getBookEntityById(Long id) {
+    public Book getBookEntityById(String id) {
         return bookRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + id));
     }
-
-    @Override
-    @Transactional
-    public Book getBookEntityByIdForUpdate(Long id) {
-        return bookRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + id));
-    }
 }
-

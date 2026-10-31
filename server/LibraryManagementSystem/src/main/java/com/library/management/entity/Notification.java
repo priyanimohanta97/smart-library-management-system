@@ -1,59 +1,47 @@
 package com.library.management.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
 import java.util.Objects;
 
-@Entity
-@Table(name = "notifications")
+@Document(collection = "notifications")
 public class Notification {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "recipient_id", nullable = false)
+    @DocumentReference
     private User recipient;
 
-    @Column(name = "title", nullable = false, length = 150)
+    @Field("title")
     private String title;
 
-    @Column(name = "message", nullable = false, length = 600)
+    @Field("message")
     private String message;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false, length = 35)
+    @Field("type")
     private NotificationType type;
 
-    @Column(name = "reference_id")
-    private Long referenceId;
+    @Field("reference_id")
+    private String referenceId;
 
-    @Column(name = "is_read", nullable = false)
+    @Field("is_read")
     private boolean isRead = false;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    @Field("created_at")
+    private Instant createdAt = Instant.now();
 
-    @Column(name = "read_at")
+    @Field("read_at")
     private Instant readAt;
 
     public Notification() {
     }
 
-    public Notification(User recipient, String title, String message, NotificationType type, Long referenceId) {
+    public Notification(User recipient, String title, String message, NotificationType type, String referenceId) {
         this.recipient = recipient;
         this.title = title;
         this.message = message;
@@ -63,23 +51,16 @@ public class Notification {
         this.createdAt = Instant.now();
     }
 
-    @PrePersist
-    protected void onCreate() {
-        if (this.createdAt == null) {
-            this.createdAt = Instant.now();
-        }
-    }
-
     public void markAsRead() {
         this.isRead = true;
         this.readAt = Instant.now();
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -115,11 +96,11 @@ public class Notification {
         this.type = type;
     }
 
-    public Long getReferenceId() {
+    public String getReferenceId() {
         return referenceId;
     }
 
-    public void setReferenceId(Long referenceId) {
+    public void setReferenceId(String referenceId) {
         this.referenceId = referenceId;
     }
 
@@ -159,4 +140,3 @@ public class Notification {
         return Objects.hash(id);
     }
 }
-

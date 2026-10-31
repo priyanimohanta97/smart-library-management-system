@@ -7,15 +7,15 @@ import java.time.Instant;
 
 public class LoanResponse {
 
-    private Long id;
-    private Long bookId;
+    private String id;
+    private String bookId;
     private String bookCode;
     private String bookTitle;
     private String bookAuthor;
     private String bookCallNumber;
     private String bookLocation;
     private String bookCoverImage;
-    private Long studentId;
+    private String studentId;
     private String studentName;
     private String studentEmail;
     private LoanStatus status;
@@ -63,19 +63,19 @@ public class LoanResponse {
         return dto;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
-    public Long getBookId() {
+    public String getBookId() {
         return bookId;
     }
 
-    public void setBookId(Long bookId) {
+    public void setBookId(String bookId) {
         this.bookId = bookId;
     }
 
@@ -127,11 +127,11 @@ public class LoanResponse {
         this.bookCoverImage = bookCoverImage;
     }
 
-    public Long getStudentId() {
+    public String getStudentId() {
         return studentId;
     }
 
-    public void setStudentId(Long studentId) {
+    public void setStudentId(String studentId) {
         this.studentId = studentId;
     }
 
@@ -223,4 +223,3 @@ public class LoanResponse {
         this.overdue = overdue;
     }
 }
-

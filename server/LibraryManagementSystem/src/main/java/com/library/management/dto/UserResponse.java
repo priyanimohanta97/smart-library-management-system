@@ -6,7 +6,7 @@ import java.time.Instant;
 
 public class UserResponse {
 
-    private Long id;
+    private String id;
     private String fullName;
     private String email;
     private String role;
@@ -16,7 +16,7 @@ public class UserResponse {
     public UserResponse() {
     }
 
-    public UserResponse(Long id, String fullName, String email, String role, boolean enabled, Instant createdAt) {
+    public UserResponse(String id, String fullName, String email, String role, boolean enabled, Instant createdAt) {
         this.id = id;
         this.fullName = fullName;
         this.email = email;
@@ -37,11 +37,11 @@ public class UserResponse {
         );
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -85,4 +85,3 @@ public class UserResponse {
         this.createdAt = createdAt;
     }
 }
-

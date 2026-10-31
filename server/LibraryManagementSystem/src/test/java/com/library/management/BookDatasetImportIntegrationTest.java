@@ -1,5 +1,6 @@
 package com.library.management;
 
+import com.library.management.config.MongoTestServerConfig;
 import com.library.management.dto.BookDatasetImportResult;
 import com.library.management.dto.BookResponse;
 import com.library.management.entity.Book;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 
@@ -22,6 +24,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
+@Import(MongoTestServerConfig.class)
 class BookDatasetImportIntegrationTest {
 
     @Autowired
@@ -145,4 +148,3 @@ class BookDatasetImportIntegrationTest {
         assertThat(searchAuthor.get(0).getAuthor()).contains("Cormen");
     }
 }
-
