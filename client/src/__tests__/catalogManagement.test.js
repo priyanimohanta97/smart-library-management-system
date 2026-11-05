@@ -296,6 +296,26 @@ describe('Catalogue Management: Add Book & Archive Book Suite', () => {
       assert.ok(studentDashboardSrc.includes('book.archived'), 'StudentDashboard must check book.archived');
       assert.ok(publicCatalogSrc.includes('book.archived'), 'PublicCatalog must check book.archived');
     });
+
+    it('LibrarianDashboard archive modal enforces responsive non-clipping viewport bounds', () => {
+      const updatedSrc = fs.readFileSync(librarianDashboardPath, 'utf8');
+      assert.ok(
+        updatedSrc.includes('max-h-[calc(100vh-2rem)]') || updatedSrc.includes('max-h-[90vh]'),
+        'Archive modal must constrain max-height to viewport'
+      );
+      assert.ok(
+        updatedSrc.includes('overflow-y-auto'),
+        'Archive modal must support vertical scrolling'
+      );
+      assert.ok(
+        updatedSrc.includes('p-3 sm:p-4'),
+        'Archive modal backdrop must use responsive padding'
+      );
+      assert.ok(
+        updatedSrc.includes('shrink-0'),
+        'Archive modal footer must pin action buttons to prevent clipping'
+      );
+    });
   });
 });
 
