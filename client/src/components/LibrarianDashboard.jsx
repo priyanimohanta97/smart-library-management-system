@@ -21,7 +21,8 @@ import {
   X,
   AlertTriangle,
   Calendar,
-  Mail
+  Mail,
+  Archive
 } from 'lucide-react';
 import { BOOKS as STATIC_BOOKS, CATEGORIES } from '../data/books';
 import { 
@@ -33,13 +34,15 @@ import {
   rejectLoan, 
   confirmReturn 
 } from '../services/loanService';
+import { createBook, archiveBook } from '../services/bookService';
 
 export default function LibrarianDashboard({
   currentUser,
   books = [],
   isFallbackCatalogue = false,
   onLogout,
-  onInspectBook
+  onInspectBook,
+  onBookAdded
 }) {
   const catalogBooks = isFallbackCatalogue 
     ? STATIC_BOOKS 
@@ -66,12 +69,19 @@ export default function LibrarianDashboard({
   const [rejectingLoan, setRejectingLoan] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
-  // New Book Mock Form State
+  // New Book Form State
   const [newBookTitle, setNewBookTitle] = useState('');
   const [newBookAuthor, setNewBookAuthor] = useState('');
   const [newBookCategory, setNewBookCategory] = useState('ai-computing');
   const [newBookCallNumber, setNewBookCallNumber] = useState('');
+  const [newBookCopies, setNewBookCopies] = useState(1);
+  const [isSubmittingBook, setIsSubmittingBook] = useState(false);
   const [addBookNotice, setAddBookNotice] = useState(null);
+
+  // Archive State
+  const [archiveFilter, setArchiveFilter] = useState('all'); // 'all' | 'active' | 'archived'
+  const [confirmingArchiveBook, setConfirmingArchiveBook] = useState(null);
+  const [isArchivingBookId, setIsArchivingBookId] = useState(null);
 
   // Fetch live circulation data from Spring Boot REST endpoints
   const loadCirculationData = async () => {
@@ -191,12 +201,18 @@ export default function LibrarianDashboard({
       if (selectedDiscipline !== 'all' && b.category !== selectedDiscipline) {
         return false;
       }
+      if (archiveFilter === 'active' && b.archived === true) {
+        return false;
+      }
+      if (archiveFilter === 'archived' && b.archived !== true) {
+        return false;
+      }
       return true;
     });
-  }, [catalogBooks, adminSearch, selectedDiscipline]);
+  }, [catalogBooks, adminSearch, selectedDiscipline, archiveFilter]);
 
-  // Handle mock book submission
-  const handleAddBookSubmit = (e) => {
+  // Handle book submission to backend REST API
+  const handleAddBookSubmit = async (e) => {
     e.preventDefault();
     if (!newBookTitle.trim() || !newBookAuthor.trim()) {
       setAddBookNotice({
@@ -206,13 +222,69 @@ export default function LibrarianDashboard({
       return;
     }
 
-    setAddBookNotice({
-      type: 'info',
-      message: `Form validated for "${newBookTitle}". Full backend ingestion endpoint (POST /api/books) will be added in Feature 2.`
-    });
-    setNewBookTitle('');
-    setNewBookAuthor('');
-    setNewBookCallNumber('');
+    if (isSubmittingBook) return;
+
+    setIsSubmittingBook(true);
+    setAddBookNotice(null);
+
+    try {
+      const created = await createBook({
+        title: newBookTitle.trim(),
+        author: newBookAuthor.trim(),
+        category: newBookCategory,
+        callNumber: newBookCallNumber.trim() || undefined,
+        totalCopies: parseInt(newBookCopies, 10) || 1,
+      });
+
+      setAddBookNotice({
+        type: 'success',
+        message: `Volume "${created.title}" successfully recorded into authoritative catalog.`
+      });
+      setNewBookTitle('');
+      setNewBookAuthor('');
+      setNewBookCallNumber('');
+      setNewBookCopies(1);
+
+      if (typeof onBookAdded === 'function') {
+        await onBookAdded();
+      }
+      await loadCirculationData();
+    } catch (err) {
+      setAddBookNotice({
+        type: 'error',
+        message: err.message || 'Failed to record entry.'
+      });
+    } finally {
+      setIsSubmittingBook(false);
+    }
+  };
+
+  // Handle archive confirmation
+  const handleConfirmArchive = async (book) => {
+    if (!book?.id) return;
+    setIsArchivingBookId(book.id);
+    setActionNotice(null);
+
+    try {
+      await archiveBook(book.id);
+      setActionNotice({
+        type: 'success',
+        message: `Volume "${book.title}" was successfully archived. Withdrawn from active student circulation.`
+      });
+      setConfirmingArchiveBook(null);
+
+      if (typeof onBookAdded === 'function') {
+        await onBookAdded();
+      }
+      await loadCirculationData();
+    } catch (err) {
+      setActionNotice({
+        type: 'error',
+        message: err.message || 'Failed to archive book.'
+      });
+    } finally {
+      setIsArchivingBookId(null);
+    }
   };
 
   return (
@@ -793,6 +865,16 @@ export default function LibrarianDashboard({
                     </option>
                   ))}
                 </select>
+
+                <select
+                  value={archiveFilter}
+                  onChange={(e) => setArchiveFilter(e.target.value)}
+                  className="h-9 text-xs bg-[#F5F9FF] border border-[#DCE7F5] rounded-lg px-2.5 text-[#0B1F3A] focus:outline-none cursor-pointer"
+                >
+                  <option value="all">All Holdings</option>
+                  <option value="active">Active Circulation</option>
+                  <option value="archived">Archived Volumes</option>
+                </select>
               </div>
             </div>
 
@@ -827,30 +909,89 @@ export default function LibrarianDashboard({
                         {book.location}
                       </td>
                       <td className="py-3 px-3 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          book.copiesAvailable > 0
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}>
-                          {book.copiesAvailable > 0 ? 'Available' : 'Checked Out'}
-                        </span>
+                        {book.archived ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700 border border-slate-300">
+                            Archived
+                          </span>
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            book.copiesAvailable > 0
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {book.copiesAvailable > 0 ? 'Available' : 'Checked Out'}
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-3 font-medium whitespace-nowrap">
                         <span className="font-bold text-[#0B1F3A]">{book.copiesAvailable}</span> / {book.totalCopies}
                       </td>
                       <td className="py-3 px-3 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => onInspectBook(book)}
-                          className="text-[#2563EB] hover:underline font-semibold cursor-pointer"
-                        >
-                          Inspect
-                        </button>
+                        <div className="flex items-center justify-end space-x-2.5">
+                          <button
+                            onClick={() => onInspectBook(book)}
+                            className="text-[#2563EB] hover:underline font-semibold cursor-pointer"
+                          >
+                            Inspect
+                          </button>
+                          {!book.archived ? (
+                            <button
+                              onClick={() => setConfirmingArchiveBook(book)}
+                              disabled={isArchivingBookId === book.id}
+                              className="text-rose-600 hover:text-rose-800 hover:underline font-semibold cursor-pointer disabled:opacity-50"
+                            >
+                              {isArchivingBookId === book.id ? 'Archiving...' : 'Archive'}
+                            </button>
+                          ) : (
+                            <span className="text-slate-400 text-[11px] font-medium italic">Archived</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {/* Archive Confirmation Modal */}
+            {confirmingArchiveBook && (
+              <div className="fixed inset-0 z-50 bg-[#0B1F3A]/60 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-scale-in">
+                  <div className="flex items-center space-x-3 text-rose-600">
+                    <AlertTriangle className="w-6 h-6 shrink-0" />
+                    <h4 className="text-base font-bold text-[#0B1F3A]">Confirm Book Archival</h4>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Are you sure you want to archive <strong>"{confirmingArchiveBook.title}"</strong> ({confirmingArchiveBook.callNumber})?
+                  </p>
+                  <p className="text-[11px] text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                    Archiving withdraws this volume from student borrowing and catalog search. Historical loan records remain completely preserved. This action will be rejected if active or pending loans currently exist.
+                  </p>
+                  <div className="flex justify-end space-x-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingArchiveBook(null)}
+                      disabled={Boolean(isArchivingBookId)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmArchive(confirmingArchiveBook)}
+                      disabled={Boolean(isArchivingBookId)}
+                      className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {isArchivingBookId === confirmingArchiveBook.id ? (
+                        <span>Archiving Volume...</span>
+                      ) : (
+                        <span>Confirm Archive</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -924,29 +1065,39 @@ export default function LibrarianDashboard({
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-semibold text-[#0B1F3A]">Call Number (Library of Congress / Dewey)</label>
-                <input
-                  type="text"
-                  value={newBookCallNumber}
-                  onChange={(e) => setNewBookCallNumber(e.target.value)}
-                  placeholder="e.g. TK1001 .S23 2026"
-                  className="w-full h-10 px-3 bg-[#F5F9FF] border border-[#DCE7F5] rounded-lg focus:outline-none focus:border-[#2563EB]"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="font-semibold text-[#0B1F3A]">Call Number (Library of Congress / Dewey)</label>
+                  <input
+                    type="text"
+                    value={newBookCallNumber}
+                    onChange={(e) => setNewBookCallNumber(e.target.value)}
+                    placeholder="e.g. TK1001 .S23 2026 (Optional)"
+                    className="w-full h-10 px-3 bg-[#F5F9FF] border border-[#DCE7F5] rounded-lg focus:outline-none focus:border-[#2563EB]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-[#0B1F3A]">Acquisition Copies</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newBookCopies}
+                    onChange={(e) => setNewBookCopies(e.target.value)}
+                    className="w-full h-10 px-3 bg-[#F5F9FF] border border-[#DCE7F5] rounded-lg focus:outline-none focus:border-[#2563EB]"
+                  />
+                </div>
               </div>
 
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="h-10 px-6 bg-[#0B1F3A] hover:bg-[#162F56] text-white font-semibold rounded-lg transition-colors cursor-pointer"
+                  disabled={isSubmittingBook}
+                  className="h-10 px-6 bg-[#0B1F3A] hover:bg-[#162F56] text-white font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  Validate & Record Entry
+                  {isSubmittingBook ? 'Recording Entry...' : 'Validate & Record Entry'}
                 </button>
               </div>
-
-              <p className="text-[11px] text-slate-500 pt-1">
-                * Note: Full backend book creation endpoint (`POST /api/books`) will be wired in Feature 2 per the architecture roadmap.
-              </p>
             </form>
           </div>
         )}

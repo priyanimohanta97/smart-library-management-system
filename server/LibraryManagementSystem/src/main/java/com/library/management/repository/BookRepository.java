@@ -21,6 +21,23 @@ public interface BookRepository extends MongoRepository<Book, String> {
 
     List<Book> findByCategoryIgnoreCase(String category);
 
+    @Query("{ 'archived': { '$ne': true } }")
+    List<Book> findAllActive();
+
+    @Query("{ 'category': { '$regex': ?0, '$options': 'i' }, 'archived': { '$ne': true } }")
+    List<Book> findByCategoryIgnoreCaseActive(String category);
+
+    @Query("{ '$and': [ " +
+            "{ 'archived': { '$ne': true } }, " +
+            "{ '$or': [ " +
+            "{ 'title': { '$regex': ?0, '$options': 'i' } }, " +
+            "{ 'author': { '$regex': ?0, '$options': 'i' } }, " +
+            "{ 'callNumber': { '$regex': ?0, '$options': 'i' } }, " +
+            "{ 'category': { '$regex': ?0, '$options': 'i' } } " +
+            "] } " +
+            "] }")
+    List<Book> searchActiveBooks(String query);
+
     @Query("{ '$or': [ " +
             "{ 'title': { '$regex': ?0, '$options': 'i' } }, " +
             "{ 'author': { '$regex': ?0, '$options': 'i' } }, " +

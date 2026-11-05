@@ -116,6 +116,9 @@ export default function StudentDashboard({
   // Filtered and Sorted Books computation
   const filteredBooks = useMemo(() => {
     return catalogBooks.filter((book) => {
+      // Archived books are permanently excluded from student catalogue
+      if (book.archived) return false;
+
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
         const matchesTitle = book.title?.toLowerCase().includes(query);

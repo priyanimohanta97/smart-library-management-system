@@ -44,6 +44,9 @@ export default function PublicCatalog({
   const filteredBooks = useMemo(() => {
     const list = Array.isArray(books) ? books : [];
     return list.filter((book) => {
+      // Archived books are permanently excluded from public catalogue
+      if (book.archived) return false;
+
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
         const matchesTitle = book.title?.toLowerCase().includes(query);

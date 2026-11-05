@@ -113,13 +113,15 @@ export default function App() {
   const loadBooksFromBackend = useCallback(async () => {
     setIsLoadingBooks(true);
     try {
-      const liveBooks = await fetchBooks();
+      const auth = getStoredAuth();
+      const isAdminOrManager = auth?.user?.role === 'ADMIN' || auth?.user?.role === 'MANAGER';
+      const liveBooks = await fetchBooks({ includeArchived: isAdminOrManager });
       // Legitimate live response (even if empty []) is preserved as authoritative
       setBooks(Array.isArray(liveBooks) ? liveBooks : []);
       setCatalogueOfflineError(null);
       setIsFallbackCatalogue(false);
     } catch (err) {
-      setCatalogueOfflineError(err.message || 'Unable to connect to MySQL library catalog.');
+      setCatalogueOfflineError(err.message || 'Unable to connect to library catalog.');
       // Do not substitute static fake books as live database inventory
       setBooks([]);
       setIsFallbackCatalogue(false);
@@ -440,6 +442,7 @@ export default function App() {
       setPendingBookAfterLogin(null);
     }
 
+    loadBooksFromBackend();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -449,6 +452,7 @@ export default function App() {
     setSavedBookIds([]);
     setNotifications([]);
     setUnreadCount(0);
+    loadBooksFromBackend();
     navigateTo('home', true);
     showToast('Signed out of VSSUT Library System.', 'info');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -569,6 +573,7 @@ export default function App() {
             isFallbackCatalogue={isFallbackCatalogue}
             onLogout={handleLogout}
             onInspectBook={(book) => setInspectedBook(book)}
+            onBookAdded={loadBooksFromBackend}
           />
         )}
       </main>

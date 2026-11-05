@@ -26,6 +26,8 @@ public interface LoanRepository extends MongoRepository<Loan, String> {
 
     boolean existsByUserAndBookAndStatusIn(User user, Book book, Collection<LoanStatus> statuses);
 
+    boolean existsByBookAndStatusIn(Book book, Collection<LoanStatus> statuses);
+
     List<Loan> findByStatusOrderByRequestDateAsc(LoanStatus status);
 
     List<Loan> findByStatusInOrderByRequestDateDesc(Collection<LoanStatus> statuses);

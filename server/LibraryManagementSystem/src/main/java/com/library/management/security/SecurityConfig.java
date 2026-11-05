@@ -72,6 +72,9 @@ public class SecurityConfig {
                         // Librarian-specific loan operations
                         .requestMatchers("/api/loans/pending", "/api/loans/return-requests", "/api/loans/active", "/api/loans/stats").hasAnyRole("MANAGER", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/loans/*/approve", "/api/loans/*/reject", "/api/loans/*/confirm-return").hasAnyRole("MANAGER", "ADMIN")
+                        // Librarian-specific book catalogue management
+                        .requestMatchers(HttpMethod.POST, "/api/books").hasAnyRole("MANAGER", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/books/*/archive").hasAnyRole("MANAGER", "ADMIN")
                         // Student/authenticated loan and notification operations
                         .requestMatchers("/api/loans/**").authenticated()
                         .requestMatchers("/api/notifications/**").authenticated()

@@ -29,6 +29,7 @@ public class BookResponse {
     private String status;
     private String synopsis;
     private List<String> tags;
+    private boolean archived;
 
     public BookResponse() {
     }
@@ -56,6 +57,7 @@ public class BookResponse {
         dto.setCopiesAvailable(book.getCopiesAvailable());
         dto.setStatus(book.getStatusString());
         dto.setSynopsis(book.getSynopsis());
+        dto.setArchived(book.isArchived());
 
         if (book.getTags() != null && !book.getTags().trim().isEmpty()) {
             dto.setTags(Arrays.stream(book.getTags().split(","))
@@ -235,5 +237,13 @@ public class BookResponse {
 
     public void setTags(List<String> tags) {
         this.tags = tags;
+    }
+
+    public boolean isArchived() {
+        return archived;
+    }
+
+    public void setArchived(boolean archived) {
+        this.archived = archived;
     }
 }
