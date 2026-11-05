@@ -74,6 +74,9 @@ public class Book {
     @Field("tags")
     private String tags;
 
+    @Field("archived")
+    private boolean archived = false;
+
     @Version
     private Long version;
 
@@ -302,6 +305,14 @@ public class Book {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public boolean isArchived() {
+        return archived;
+    }
+
+    public void setArchived(boolean archived) {
+        this.archived = archived;
     }
 
     @Override

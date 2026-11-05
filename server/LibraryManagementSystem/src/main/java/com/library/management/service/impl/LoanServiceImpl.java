@@ -89,6 +89,13 @@ public class LoanServiceImpl implements LoanService {
             book = bookRepository.findById(dto.getBookId())
                     .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + dto.getBookId()));
 
+            // Reject borrowing archived books
+            if (book.isArchived()) {
+                throw new LoanOperationException(
+                        "Cannot request loan: book '" + book.getTitle() + "' is archived and no longer in circulation.", 400
+                );
+            }
+
             // 3. Prevent duplicate active loans or pending requests for the same book
             if (loanRepository.existsByUserAndBookAndStatusIn(currentStudent, book, ACTIVE_STATUSES)) {
                 throw new LoanOperationException(
