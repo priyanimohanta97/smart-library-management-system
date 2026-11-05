@@ -955,24 +955,49 @@ export default function LibrarianDashboard({
 
             {/* Archive Confirmation Modal */}
             {confirmingArchiveBook && (
-              <div className="fixed inset-0 z-50 bg-[#0B1F3A]/60 backdrop-blur-xs flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-scale-in">
-                  <div className="flex items-center space-x-3 text-rose-600">
-                    <AlertTriangle className="w-6 h-6 shrink-0" />
-                    <h4 className="text-base font-bold text-[#0B1F3A]">Confirm Book Archival</h4>
-                  </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Are you sure you want to archive <strong>"{confirmingArchiveBook.title}"</strong> ({confirmingArchiveBook.callNumber})?
-                  </p>
-                  <p className="text-[11px] text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200">
-                    Archiving withdraws this volume from student borrowing and catalog search. Historical loan records remain completely preserved. This action will be rejected if active or pending loans currently exist.
-                  </p>
-                  <div className="flex justify-end space-x-3 pt-2">
+              <div
+                className="fixed inset-0 z-50 bg-[#0B1F3A]/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="archive-modal-title"
+              >
+                <div className="relative bg-white rounded-2xl max-w-md w-full my-auto shadow-2xl border border-slate-200 flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[90vh] overflow-hidden animate-scale-in">
+                  {/* Modal Header */}
+                  <div className="px-5 sm:px-6 pt-5 sm:pt-6 pb-2.5 shrink-0 flex items-center justify-between border-b border-slate-100">
+                    <div className="flex items-center space-x-2.5 text-rose-600">
+                      <AlertTriangle className="w-5 h-5 shrink-0" />
+                      <h4 id="archive-modal-title" className="text-base font-bold text-[#0B1F3A]">
+                        Confirm Book Archival
+                      </h4>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setConfirmingArchiveBook(null)}
                       disabled={Boolean(isArchivingBookId)}
-                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                      aria-label="Close dialog"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Scrollable Modal Body */}
+                  <div className="px-5 sm:px-6 py-4 overflow-y-auto space-y-3.5 text-xs text-slate-600">
+                    <p className="leading-relaxed">
+                      Are you sure you want to archive <strong>"{confirmingArchiveBook.title}"</strong> ({confirmingArchiveBook.callNumber})?
+                    </p>
+                    <p className="text-[11px] text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-200 leading-relaxed">
+                      Archiving withdraws this volume from student borrowing and catalog search. Historical loan records remain completely preserved. This action will be rejected if active or pending loans currently exist.
+                    </p>
+                  </div>
+
+                  {/* Pinned Action Footer */}
+                  <div className="px-5 sm:px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end space-x-3 shrink-0 rounded-b-2xl">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingArchiveBook(null)}
+                      disabled={Boolean(isArchivingBookId)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200/70 rounded-lg transition-colors cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -980,7 +1005,7 @@ export default function LibrarianDashboard({
                       type="button"
                       onClick={() => handleConfirmArchive(confirmingArchiveBook)}
                       disabled={Boolean(isArchivingBookId)}
-                      className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+                      className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors flex items-center space-x-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
                     >
                       {isArchivingBookId === confirmingArchiveBook.id ? (
                         <span>Archiving Volume...</span>
