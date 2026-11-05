@@ -274,8 +274,8 @@ export default function App() {
 
   // Reserve / Loan Action
   const handleReserve = async (book) => {
-    // 1. Guard against fallback data, offline catalog, or non-numeric IDs
-    if (isFallbackCatalogue || catalogueOfflineError || typeof book?.id !== 'number') {
+    // 1. Guard against fallback data, offline catalog, or missing book IDs
+    if (isFallbackCatalogue || catalogueOfflineError || !book?.id) {
       showToast(
         'Physical monograph borrowing is temporarily unavailable while running on offline catalogue preview. Please verify database connectivity.',
         'error'
@@ -581,7 +581,7 @@ export default function App() {
         isSaved={inspectedBook ? (savedBookIds.includes(inspectedBook.id) || savedBookIds.includes(inspectedBook.code)) : false}
         onToggleSave={handleToggleSave}
         onReserve={handleReserve}
-        isBorrowingDisabled={isFallbackCatalogue || Boolean(catalogueOfflineError) || typeof inspectedBook?.id !== 'number'}
+        isBorrowingDisabled={isFallbackCatalogue || Boolean(catalogueOfflineError) || !inspectedBook?.id}
         showReadingList={!isLibrarianOrAdmin(currentUser)}
       />
 
