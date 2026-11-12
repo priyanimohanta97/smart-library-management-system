@@ -20,13 +20,12 @@ import {
 import SearchBar from './SearchBar';
 import BookCollection from './BookCollection';
 import CategorySection from './CategorySection';
-import { BOOKS as STATIC_BOOKS } from '../data/books';
 import { getMyLoans, requestReturn } from '../services/loanService';
+import { filterAndSortCatalogBooks } from '../utils/bookDisplayUtils';
 
 export default function StudentDashboard({
   currentUser,
   books = [],
-  isFallbackCatalogue = false,
   savedBookIds = [],
   onToggleSave,
   onInspectBook,
@@ -36,9 +35,7 @@ export default function StudentDashboard({
   onNavigateHome,
   onNavigateNotesPyqs
 }) {
-  const catalogBooks = isFallbackCatalogue 
-    ? STATIC_BOOKS 
-    : (Array.isArray(books) ? books : []);
+  const catalogBooks = Array.isArray(books) ? books : [];
 
   // View state: 'catalog' | 'loans'
   const [activeTab, setActiveTab] = useState('catalog');
@@ -47,8 +44,7 @@ export default function StudentDashboard({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [onlyAvailable, setOnlyAvailable] = useState(false);
-  const [onlyEditorPicks, setOnlyEditorPicks] = useState(false);
-  const [sortBy, setSortBy] = useState('featured');
+  const [sortBy, setSortBy] = useState('default');
 
   // Loans State
   const [studentLoans, setStudentLoans] = useState([]);
@@ -113,52 +109,20 @@ export default function StudentDashboard({
 
   const totalActiveAndPending = activeIssuedLoans.length + pendingRequests.length + returnPendingLoans.length;
 
+  // Active (non-archived) student-visible catalogue books
+  const activeCatalogBooks = useMemo(() => {
+    return catalogBooks.filter((book) => book && !book.archived);
+  }, [catalogBooks]);
+
   // Filtered and Sorted Books computation
   const filteredBooks = useMemo(() => {
-    return catalogBooks.filter((book) => {
-      // Archived books are permanently excluded from student catalogue
-      if (book.archived) return false;
-
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase().trim();
-        const matchesTitle = book.title?.toLowerCase().includes(query);
-        const matchesAuthor = book.author?.toLowerCase().includes(query);
-        const matchesCall = book.callNumber?.toLowerCase().includes(query);
-        const matchesCategory = book.categoryLabel?.toLowerCase().includes(query);
-        const matchesTags = Array.isArray(book.tags)
-          ? book.tags.some((t) => t.toLowerCase().includes(query))
-          : book.tags?.toLowerCase().includes(query);
-        const matchesSynopsis = book.synopsis?.toLowerCase().includes(query);
-
-        if (!matchesTitle && !matchesAuthor && !matchesCall && !matchesCategory && !matchesTags && !matchesSynopsis) {
-          return false;
-        }
-      }
-
-      if (selectedCategory !== 'all' && book.category !== selectedCategory) {
-        return false;
-      }
-
-      if (onlyAvailable && book.status !== 'Available') {
-        return false;
-      }
-
-      if (onlyEditorPicks && !book.editorPick) {
-        return false;
-      }
-
-      return true;
-    }).sort((a, b) => {
-      if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
-      if (sortBy === 'year-desc') return (b.year || b.publicationYear || 0) - (a.year || a.publicationYear || 0);
-      if (sortBy === 'title-asc') return (a.title || '').localeCompare(b.title || '');
-      if (a.featured && !b.featured) return -1;
-      if (!a.featured && b.featured) return 1;
-      if (a.editorPick && !b.editorPick) return -1;
-      if (!a.editorPick && b.editorPick) return 1;
-      return (b.rating || 0) - (a.rating || 0);
+    return filterAndSortCatalogBooks(activeCatalogBooks, {
+      searchQuery,
+      selectedCategory,
+      onlyAvailable,
+      sortBy,
     });
-  }, [catalogBooks, searchQuery, selectedCategory, onlyAvailable, onlyEditorPicks, sortBy]);
+  }, [activeCatalogBooks, searchQuery, selectedCategory, onlyAvailable, sortBy]);
 
   // Saved books list computation
   const savedBooks = useMemo(() => {
@@ -169,8 +133,7 @@ export default function StudentDashboard({
     setSearchQuery('');
     setSelectedCategory('all');
     setOnlyAvailable(false);
-    setOnlyEditorPicks(false);
-    setSortBy('featured');
+    setSortBy('default');
   };
 
   return (
@@ -241,7 +204,7 @@ export default function StudentDashboard({
               }`}
             >
               <BookOpen className="w-4 h-4" />
-              <span>Library Catalogue ({catalogBooks.length})</span>
+              <span>Library Catalogue ({activeCatalogBooks.length})</span>
             </button>
 
             <button
@@ -322,8 +285,6 @@ export default function StudentDashboard({
                 setSelectedCategory={setSelectedCategory}
                 onlyAvailable={onlyAvailable}
                 setOnlyAvailable={setOnlyAvailable}
-                onlyEditorPicks={onlyEditorPicks}
-                setOnlyEditorPicks={setOnlyEditorPicks}
                 sortBy={sortBy}
                 setSortBy={setSortBy}
                 resultsCount={filteredBooks.length}
@@ -417,6 +378,7 @@ export default function StudentDashboard({
 
             {/* Academic Disciplines Section */}
             <CategorySection
+              books={catalogBooks}
               onSelectCategory={(catId) => {
                 setSelectedCategory(catId);
                 document.getElementById('student-search-section')?.scrollIntoView({ behavior: 'smooth' });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X, Sparkles } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { CATEGORIES } from '../data/books';
 
 export default function SearchBar({
@@ -9,8 +9,6 @@ export default function SearchBar({
   setSelectedCategory,
   onlyAvailable,
   setOnlyAvailable,
-  onlyEditorPicks,
-  setOnlyEditorPicks,
   sortBy,
   setSortBy,
   resultsCount,
@@ -69,20 +67,6 @@ export default function SearchBar({
 
         {/* Filters & Sort options */}
         <div className="flex flex-wrap items-center gap-2.5 text-xs">
-          {/* Editor picks filter */}
-          <button
-            onClick={() => setOnlyEditorPicks(!onlyEditorPicks)}
-            className={`h-8 inline-flex items-center space-x-1.5 px-3 rounded-lg border text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[#2563EB] cursor-pointer ${
-              onlyEditorPicks
-                ? 'bg-blue-50 border-[#2563EB] text-[#2563EB] font-bold'
-                : 'border-[#DCE7F5] text-slate-600 hover:bg-[#F5F9FF]'
-            }`}
-            aria-pressed={onlyEditorPicks}
-          >
-            <Sparkles className="w-3 h-3 text-[#2563EB]" />
-            <span>Faculty Picks</span>
-          </button>
-
           {/* Only Available Filter */}
           <button
             onClick={() => setOnlyAvailable(!onlyAvailable)}
@@ -108,17 +92,17 @@ export default function SearchBar({
               onChange={(e) => setSortBy(e.target.value)}
               className="h-8 bg-[#F5F9FF] border border-[#DCE7F5] rounded-lg px-2 text-xs text-[#0B1F3A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25 focus:border-[#2563EB] cursor-pointer"
             >
-              <option value="featured">Faculty Recommendation</option>
-              <option value="rating">Highest Scholarly Rating</option>
-              <option value="year-desc">Publication Year (Newest)</option>
+              <option value="default">Default Order</option>
               <option value="title-asc">Title (A to Z)</option>
+              <option value="year-desc">Publication Year (Newest)</option>
+              <option value="rating">Highest Scholarly Rating</option>
             </select>
           </div>
         </div>
       </div>
 
       {/* Active filters status bar */}
-      {(searchQuery || selectedCategory !== 'all' || onlyAvailable || onlyEditorPicks) && (
+      {(searchQuery || selectedCategory !== 'all' || onlyAvailable) && (
         <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
           <div className="flex items-center space-x-2">
             <span>Showing <strong className="text-[#0B1F3A]">{resultsCount}</strong> filtered volume{resultsCount === 1 ? '' : 's'}</span>
@@ -133,7 +117,6 @@ export default function SearchBar({
               setSearchQuery('');
               setSelectedCategory('all');
               setOnlyAvailable(false);
-              setOnlyEditorPicks(false);
             }}
             className="text-[#2563EB] hover:underline font-medium cursor-pointer"
           >

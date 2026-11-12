@@ -24,7 +24,7 @@ import {
   Mail,
   Archive
 } from 'lucide-react';
-import { BOOKS as STATIC_BOOKS, CATEGORIES } from '../data/books';
+import { CATEGORIES } from '../data/books';
 import { 
   getCirculationStats, 
   getPendingLoans, 
@@ -35,18 +35,21 @@ import {
   confirmReturn 
 } from '../services/loanService';
 import { createBook, archiveBook } from '../services/bookService';
+import {
+  evaluateCirculationConnectivity,
+  resolveLibrarianConnectivityState,
+} from '../utils/connectivityUtils';
 
 export default function LibrarianDashboard({
   currentUser,
   books = [],
-  isFallbackCatalogue = false,
   onLogout,
   onInspectBook,
-  onBookAdded
+  onBookAdded,
+  isBackendOnline = true,
+  isCheckingBackend = false,
 }) {
-  const catalogBooks = isFallbackCatalogue 
-    ? STATIC_BOOKS 
-    : (Array.isArray(books) ? books : []);
+  const catalogBooks = Array.isArray(books) ? books : [];
 
   // Navigation Tabs for Admin Portal
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'catalog' | 'add-book' | 'circulation' | 'audit'
@@ -62,6 +65,8 @@ export default function LibrarianDashboard({
   const [pendingReturns, setPendingReturns] = useState([]);
   const [activeLoans, setActiveLoans] = useState([]);
   const [isLoadingCirculation, setIsLoadingCirculation] = useState(false);
+  const [circulationStatus, setCirculationStatus] = useState('online'); // 'online' | 'degraded' | 'offline'
+  const circulationConnected = circulationStatus === 'online';
   const [actionNotice, setActionNotice] = useState(null);
   const [processingLoanId, setProcessingLoanId] = useState(null);
 
@@ -87,18 +92,25 @@ export default function LibrarianDashboard({
   const loadCirculationData = async () => {
     setIsLoadingCirculation(true);
     try {
-      const [stats, pending, returns, active] = await Promise.all([
-        getCirculationStats().catch(() => null),
-        getPendingLoans().catch(() => []),
-        getPendingReturns().catch(() => []),
-        getActiveLoans().catch(() => []),
+      const results = await Promise.allSettled([
+        getCirculationStats(),
+        getPendingLoans(),
+        getPendingReturns(),
+        getActiveLoans(),
       ]);
+      const stats = results[0].status === 'fulfilled' ? results[0].value : null;
+      const pending = results[1].status === 'fulfilled' ? results[1].value : [];
+      const returns = results[2].status === 'fulfilled' ? results[2].value : [];
+      const active = results[3].status === 'fulfilled' ? results[3].value : [];
+
+      setCirculationStatus(evaluateCirculationConnectivity(results));
       setCirculationStats(stats);
       setPendingLoans(pending || []);
       setPendingReturns(returns || []);
       setActiveLoans(active || []);
     } catch (err) {
       console.warn('Circulation data load error:', err);
+      setCirculationStatus('offline');
     } finally {
       setIsLoadingCirculation(false);
     }
@@ -319,11 +331,37 @@ export default function LibrarianDashboard({
                 {currentUser?.fullName?.charAt(0) || 'L'}
               </div>
               <div>
-                <p className="text-xs font-bold text-white">{currentUser?.fullName || 'Chief Librarian'}</p>
-                <p className="text-[11px] text-slate-300">{currentUser?.email || 'admin@library.vssut.ac.in'}</p>
-                <span className="inline-block text-[10px] font-semibold text-emerald-400 mt-0.5">
-                  ● Active Database Connection
-                </span>
+                <p className="text-xs font-bold text-white">{currentUser?.fullName || 'Librarian'}</p>
+                {currentUser?.email && (
+                  <p className="text-[11px] text-slate-300">{currentUser.email}</p>
+                )}
+                {(() => {
+                  const connectionState = resolveLibrarianConnectivityState({
+                    isCheckingBackend,
+                    isLoadingCirculation,
+                    isBackendOnline,
+                    circulationStatus,
+                  });
+                  const badgeColor =
+                    connectionState === 'connecting' || connectionState === 'degraded'
+                      ? 'text-amber-300'
+                      : connectionState === 'online'
+                      ? 'text-emerald-400'
+                      : 'text-rose-400';
+                  const badgeText =
+                    connectionState === 'connecting'
+                      ? '● Connecting to Database...'
+                      : connectionState === 'online'
+                      ? '● Active Database Connection'
+                      : connectionState === 'degraded'
+                      ? '● Partial Service Availability'
+                      : '● Database Connection Offline';
+                  return (
+                    <span className={`inline-block text-[10px] font-semibold mt-0.5 ${badgeColor}`}>
+                      {badgeText}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -839,7 +877,7 @@ export default function LibrarianDashboard({
             <div className="p-4 sm:p-5 bg-[#F8FAFC] border-b border-[#DCE7F5] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-base font-bold text-[#0B1F3A]">Database Stack Catalogue</h3>
-                <p className="text-xs text-slate-500">Live inventory records backed by MySQL persistence.</p>
+                <p className="text-xs text-slate-500">Live inventory records backed by MongoDB Atlas persistence.</p>
               </div>
 
               <div className="flex items-center space-x-3">
@@ -1140,7 +1178,7 @@ export default function LibrarianDashboard({
               </div>
               <div className="p-4 rounded-xl bg-[#F5F9FF] border border-[#DCE7F5] space-y-2">
                 <h4 className="font-bold text-[#0B1F3A] text-sm">Inventory Concurrency Locking</h4>
-                <p>Pessimistic write locking (<code>SELECT ... FOR UPDATE</code>) + optimistic <code>@Version</code> prevent double-issuance of final copies.</p>
+                <p>Atomic inventory updates and optimistic <code>@Version</code> concurrency control prevent double-issuance of final copies.</p>
               </div>
               <div className="p-4 rounded-xl bg-[#F5F9FF] border border-[#DCE7F5] space-y-2">
                 <h4 className="font-bold text-[#0B1F3A] text-sm">Automated In-App Alerts</h4>

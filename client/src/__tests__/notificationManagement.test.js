@@ -1,5 +1,8 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   deleteNotification,
@@ -14,6 +17,11 @@ import {
   setStoredAuth,
   clearStoredAuth,
 } from '../services/authService.js';
+
+import { formatRelativeTime } from '../utils/dateUtils.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Helper to construct a valid 3-part test JWT with future expiration
 function createTestJwt(payloadObj = {}) {
@@ -210,6 +218,30 @@ describe('Notification Management & Deletion Suite', () => {
 
       assert.equal(notifications.length, 0);
       assert.equal(unreadCount, 0);
+    });
+  });
+
+  describe('4. Notification Relative Time Formatting Regression (diffInDays TDZ fix)', () => {
+    it('formats seconds, minutes, hours, multi-day intervals, and older dates without throwing ReferenceError', () => {
+      const now = new Date('2026-11-12T12:00:00Z');
+
+      assert.equal(formatRelativeTime('2026-11-12T11:59:30Z', now), 'Just now');
+      assert.equal(formatRelativeTime('2026-11-12T11:45:00Z', now), '15m ago');
+      assert.equal(formatRelativeTime('2026-11-12T08:00:00Z', now), '4h ago');
+      assert.equal(formatRelativeTime('2026-11-10T12:00:00Z', now), '2d ago');
+      assert.equal(formatRelativeTime('2026-11-06T12:00:00Z', now), '6d ago');
+      assert.equal(formatRelativeTime('2026-11-01T12:00:00Z', now), 'Nov 1');
+      assert.equal(formatRelativeTime(null, now), '');
+      assert.equal(formatRelativeTime('invalid-date', now), '');
+    });
+
+    it('NotificationDrawer imports formatRelativeTime from dateUtils and contains no TDZ bug', () => {
+      const drawerSrc = fs.readFileSync(
+        path.resolve(__dirname, '../components/NotificationDrawer.jsx'),
+        'utf8'
+      );
+      assert.ok(drawerSrc.includes("from '../utils/dateUtils'"));
+      assert.ok(!drawerSrc.includes('Math.floor(diffInDays / 24)'));
     });
   });
 });

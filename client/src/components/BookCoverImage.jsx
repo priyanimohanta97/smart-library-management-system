@@ -38,7 +38,7 @@ export default function BookCoverImage({
 
         {/* Bottom archival seal */}
         <div className="pt-2 border-t border-[#E8E2D9] text-[9px] text-[#94A3B8] tracking-widest uppercase text-center font-interface">
-          Athenæum Stacks
+          VSSUT Central Library
         </div>
       </div>
     );
