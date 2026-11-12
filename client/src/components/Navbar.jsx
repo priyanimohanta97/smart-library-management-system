@@ -27,7 +27,9 @@ export default function Navbar({
   onOpenDashboard,
   currentView = 'home',
   unreadNotificationsCount = 0,
-  onOpenNotifications
+  onOpenNotifications,
+  isBackendOnline = true,
+  isCheckingBackend = false
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -44,14 +46,36 @@ export default function Navbar({
       {/* Top Institutional Notification Strip */}
       <div className="bg-[#0B1F3A] text-white text-xs py-1.5 px-4 sm:px-8 flex justify-between items-center tracking-wide border-b border-[#162F56]">
         <div className="flex items-center space-x-2.5">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span
+            className={`inline-block w-2 h-2 rounded-full ${
+              isCheckingBackend
+                ? 'bg-amber-400 animate-pulse'
+                : isBackendOnline
+                ? 'bg-emerald-400 animate-pulse'
+                : 'bg-rose-400'
+            }`}
+          ></span>
           <span className="font-medium text-slate-200">
             Veer Surendra Sai University of Technology · Central Digital Library
           </span>
         </div>
         <div className="hidden md:flex items-center space-x-6 text-slate-300 text-xs">
           <span>Main Reading Hall Open: 08:00 – 22:00</span>
-          <span className="text-blue-300 font-medium">Digital OPAC Active</span>
+          <span
+            className={`font-medium ${
+              isCheckingBackend
+                ? 'text-amber-300'
+                : isBackendOnline
+                ? 'text-blue-300'
+                : 'text-rose-300'
+            }`}
+          >
+            {isCheckingBackend
+              ? 'Connecting to Digital OPAC...'
+              : isBackendOnline
+              ? 'Digital OPAC Active'
+              : 'Digital OPAC Offline'}
+          </span>
           <span>Burla, Sambalpur, Odisha</span>
         </div>
       </div>
@@ -326,7 +350,7 @@ export default function Navbar({
                 <span>Enter Library Portal</span>
               </button>
             )}
-            <span className="text-[#0B1F3A] font-semibold">VSSUT Portal v2.0</span>
+            <span className="text-[#0B1F3A] font-semibold">VSSUT Central Library</span>
           </div>
         </div>
       )}

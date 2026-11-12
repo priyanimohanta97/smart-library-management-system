@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import SearchBar from './SearchBar';
 import BookCollection from './BookCollection';
+import { filterAndSortCatalogBooks } from '../utils/bookDisplayUtils';
 
 export default function PublicCatalog({
   books = [],
@@ -35,65 +36,27 @@ export default function PublicCatalog({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [onlyAvailable, setOnlyAvailable] = useState(false);
-  const [onlyEditorPicks, setOnlyEditorPicks] = useState(false);
-  const [sortBy, setSortBy] = useState('featured');
+  const [sortBy, setSortBy] = useState('default');
 
   const searchInputRef = useRef(null);
 
   // Filtered and Sorted Books computation from authoritative live backend records
   const filteredBooks = useMemo(() => {
     const list = Array.isArray(books) ? books : [];
-    return list.filter((book) => {
-      // Archived books are permanently excluded from public catalogue
-      if (book.archived) return false;
-
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase().trim();
-        const matchesTitle = book.title?.toLowerCase().includes(query);
-        const matchesAuthor = book.author?.toLowerCase().includes(query);
-        const matchesCall = book.callNumber?.toLowerCase().includes(query);
-        const matchesCategory = book.categoryLabel?.toLowerCase().includes(query);
-        const matchesTags = Array.isArray(book.tags)
-          ? book.tags.some((t) => t.toLowerCase().includes(query))
-          : book.tags?.toLowerCase().includes(query);
-        const matchesSynopsis = book.synopsis?.toLowerCase().includes(query);
-
-        if (!matchesTitle && !matchesAuthor && !matchesCall && !matchesCategory && !matchesTags && !matchesSynopsis) {
-          return false;
-        }
-      }
-
-      if (selectedCategory !== 'all' && book.category !== selectedCategory) {
-        return false;
-      }
-
-      if (onlyAvailable && book.status !== 'Available') {
-        return false;
-      }
-
-      if (onlyEditorPicks && !book.editorPick) {
-        return false;
-      }
-
-      return true;
-    }).sort((a, b) => {
-      if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
-      if (sortBy === 'year-desc') return (b.year || b.publicationYear || 0) - (a.year || a.publicationYear || 0);
-      if (sortBy === 'title-asc') return (a.title || '').localeCompare(b.title || '');
-      if (a.featured && !b.featured) return -1;
-      if (!a.featured && b.featured) return 1;
-      if (a.editorPick && !b.editorPick) return -1;
-      if (!a.editorPick && b.editorPick) return 1;
-      return (b.rating || 0) - (a.rating || 0);
+    const activeBooks = list.filter((book) => !book.archived);
+    return filterAndSortCatalogBooks(activeBooks, {
+      searchQuery,
+      selectedCategory,
+      onlyAvailable,
+      sortBy,
     });
-  }, [books, searchQuery, selectedCategory, onlyAvailable, onlyEditorPicks, sortBy]);
+  }, [books, searchQuery, selectedCategory, onlyAvailable, sortBy]);
 
   const handleResetFilters = () => {
     setSearchQuery('');
     setSelectedCategory('all');
     setOnlyAvailable(false);
-    setOnlyEditorPicks(false);
-    setSortBy('featured');
+    setSortBy('default');
   };
 
   return (
@@ -206,7 +169,7 @@ export default function PublicCatalog({
               Connecting to VSSUT Central Library Catalogue...
             </h3>
             <p className="text-xs text-slate-500 mt-1.5 max-w-md mx-auto leading-relaxed">
-              Querying Spring Boot REST API and MySQL database for real-time monograph holdings and live stock quantities.
+              Querying library catalogue service for real-time monograph holdings and availability.
             </p>
           </div>
         )}
@@ -221,7 +184,7 @@ export default function PublicCatalog({
               Live Catalogue Service Unavailable
             </h3>
             <p className="text-xs sm:text-sm text-slate-600 mt-2 max-w-lg mx-auto leading-relaxed">
-              Unable to connect to the Spring Boot backend on port 8080. Real-time monograph records, active stack quantities, and live availability cannot be verified right now.
+              Unable to connect to the library catalogue service. Real-time monograph records and copy availability cannot be verified right now.
             </p>
             <div className="mt-5 flex items-center justify-center space-x-3">
               <button
@@ -248,8 +211,6 @@ export default function PublicCatalog({
                 setSelectedCategory={setSelectedCategory}
                 onlyAvailable={onlyAvailable}
                 setOnlyAvailable={setOnlyAvailable}
-                onlyEditorPicks={onlyEditorPicks}
-                setOnlyEditorPicks={setOnlyEditorPicks}
                 sortBy={sortBy}
                 setSortBy={setSortBy}
                 resultsCount={filteredBooks.length}

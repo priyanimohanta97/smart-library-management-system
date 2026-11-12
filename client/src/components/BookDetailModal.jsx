@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { X, Star, Bookmark, MapPin, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import BookCoverImage from './BookCoverImage';
+import { hasMeaningfulText, hasNumericValue } from '../utils/bookDisplayUtils';
 
 export default function BookDetailModal({
   book,
@@ -32,6 +33,15 @@ export default function BookDetailModal({
   const isAvailable = book.status === 'Available';
   const isFallback = isBorrowingDisabled || Boolean(book.isFallback) || (typeof book.id === 'string' && book.id.startsWith('book-'));
 
+  const hasYear = hasNumericValue(book.year);
+  const hasRating = hasNumericValue(book.rating);
+  const hasReviewsCount = hasNumericValue(book.reviewsCount);
+  const hasPages = hasNumericValue(book.pages);
+  const hasAnyMetric = hasRating || hasReviewsCount || hasPages;
+  const parsedTags = Array.isArray(book.tags)
+    ? book.tags.filter(hasMeaningfulText)
+    : (hasMeaningfulText(book.tags) ? book.tags.split(',').map((t) => t.trim()).filter(Boolean) : []);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-book-title">
       {/* Backdrop */}
@@ -45,9 +55,11 @@ export default function BookDetailModal({
         {/* Modal Header */}
         <div className="px-5 sm:px-6 py-3.5 bg-[#F8FAFC] border-b border-[#DCE7F5] flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-white text-[#0B1F3A] border border-[#DCE7F5]">
-              Call Number: {book.callNumber}
-            </span>
+            {hasMeaningfulText(book.callNumber) && (
+              <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-white text-[#0B1F3A] border border-[#DCE7F5]">
+                Call Number: {book.callNumber}
+              </span>
+            )}
             <span className="text-xs font-semibold text-[#2563EB]">
               {book.categoryLabel}
             </span>
@@ -85,7 +97,7 @@ export default function BookDetailModal({
                     ? 'bg-emerald-100 text-emerald-800' 
                     : 'bg-amber-100 text-amber-800'
                 }`}>
-                  {isAvailable ? `In Stacks (${book.copiesAvailable} copies)` : 'Waitlist Active'}
+                  {isAvailable ? `In Stacks (${book.copiesAvailable} copies)` : 'Currently Checked Out'}
                 </span>
               </div>
             </div>
@@ -96,53 +108,72 @@ export default function BookDetailModal({
                 <h2 id="modal-book-title" className="text-xl sm:text-2xl font-bold text-[#0B1F3A] leading-tight">
                   {book.title}
                 </h2>
-                {book.subtitle && (
+                {hasMeaningfulText(book.subtitle) && (
                   <p className="text-xs sm:text-sm text-slate-500 mt-1 italic">
                     {book.subtitle}
                   </p>
                 )}
                 <p className="text-xs text-slate-600 mt-2">
-                  By <strong className="text-slate-900">{book.author}</strong> ({book.year})
+                  By <strong className="text-slate-900">{book.author}</strong>
+                  {hasYear && <span> ({book.year})</span>}
                 </p>
-                <p className="text-[11px] text-slate-400">
-                  {book.authorRole || 'Faculty Monograph'}
-                </p>
+                {hasMeaningfulText(book.authorRole) && (
+                  <p className="text-[11px] text-slate-400">
+                    {book.authorRole.trim()}
+                  </p>
+                )}
               </div>
 
-              {/* Rating & Review */}
-              <div className="flex items-center space-x-2 text-xs text-slate-700">
-                <div className="flex items-center space-x-1 font-bold text-[#0B1F3A]">
-                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  <span>{book.rating} / 5.0</span>
+              {/* Rating, Review & Pages */}
+              {hasAnyMetric && (
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700">
+                  {hasRating && (
+                    <div className="flex items-center space-x-1 font-bold text-[#0B1F3A]">
+                      <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                      <span>{book.rating} / 5.0</span>
+                    </div>
+                  )}
+                  {hasReviewsCount && (
+                    <>
+                      {hasRating && <span className="text-slate-400">·</span>}
+                      <span className="text-slate-500">{book.reviewsCount} scholarly citations &amp; reviews</span>
+                    </>
+                  )}
+                  {hasPages && (
+                    <>
+                      {(hasRating || hasReviewsCount) && <span className="text-slate-400">·</span>}
+                      <span className="text-slate-500">{book.pages} pages</span>
+                    </>
+                  )}
                 </div>
-                <span className="text-slate-400">·</span>
-                <span className="text-slate-500">{book.reviewsCount} scholarly citations & reviews</span>
-                <span className="text-slate-400">·</span>
-                <span className="text-slate-500">{book.pages} pages</span>
-              </div>
+              )}
 
               {/* Location in Central Library */}
-              <div className="p-3 bg-[#F5F9FF] rounded-xl border border-[#DCE7F5] flex items-center space-x-2.5 text-xs text-slate-700">
-                <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>
-                  <strong>Shelf Location:</strong> {book.location}
-                </span>
-              </div>
+              {hasMeaningfulText(book.location) && (
+                <div className="p-3 bg-[#F5F9FF] rounded-xl border border-[#DCE7F5] flex items-center space-x-2.5 text-xs text-slate-700">
+                  <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>
+                    <strong>Shelf Location:</strong> {book.location}
+                  </span>
+                </div>
+              )}
 
               {/* Synopsis */}
-              <div className="space-y-1.5">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Monograph Abstract & Synopsis
-                </h4>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  {book.synopsis}
-                </p>
-              </div>
+              {hasMeaningfulText(book.synopsis) && (
+                <div className="space-y-1.5">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Monograph Abstract &amp; Synopsis
+                  </h4>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    {book.synopsis}
+                  </p>
+                </div>
+              )}
 
               {/* Subject Tags */}
-              {book.tags && (
+              {parsedTags.length > 0 && (
                 <div className="pt-1 flex flex-wrap gap-1.5">
-                  {(Array.isArray(book.tags) ? book.tags : book.tags.split(',').map(t => t.trim())).map((tag) => (
+                  {parsedTags.map((tag) => (
                     <span 
                       key={tag}
                       className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200"
@@ -198,7 +229,7 @@ export default function BookDetailModal({
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
               }`}
             >
-              {isFallback ? 'Borrowing Offline' : isAvailable ? 'Issue Book' : 'Join Waitlist'}
+              {isFallback ? 'Borrowing Offline' : isAvailable ? 'Issue Book' : 'Unavailable'}
             </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, Bookmark, MapPin, ArrowUpRight } from 'lucide-react';
 import BookCoverImage from './BookCoverImage';
+import { hasMeaningfulText, hasNumericValue } from '../utils/bookDisplayUtils';
 
 export default function BookCard({
   book,
@@ -29,9 +30,11 @@ export default function BookCard({
           />
 
           {/* Spine Call Number Tag */}
-          <div className="absolute top-2.5 left-2.5 bg-[#0B1F3A]/90 backdrop-blur-xs text-white text-[10px] font-mono tracking-wider px-2 py-0.5 rounded shadow-2xs">
-            {book.callNumber}
-          </div>
+          {hasMeaningfulText(book.callNumber) && (
+            <div className="absolute top-2.5 left-2.5 bg-[#0B1F3A]/90 backdrop-blur-xs text-white text-[10px] font-mono tracking-wider px-2 py-0.5 rounded shadow-2xs">
+              {book.callNumber}
+            </div>
+          )}
 
           {/* Bookmark Button */}
           <button
@@ -50,14 +53,11 @@ export default function BookCard({
             <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
           </button>
 
-          {/* Category Badge & Editor's Tag */}
+          {/* Category Badge */}
           <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
-            <span className="bg-white/95 backdrop-blur-xs text-[#0B1F3A] text-[10px] font-semibold px-2 py-0.5 rounded border border-[#DCE7F5] shadow-2xs">
-              {book.categoryLabel}
-            </span>
-            {book.editorPick && (
-              <span className="bg-[#2563EB] text-white text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded shadow-2xs">
-                Faculty Pick
+            {hasMeaningfulText(book.categoryLabel) && (
+              <span className="bg-white/95 backdrop-blur-xs text-[#0B1F3A] text-[10px] font-semibold px-2 py-0.5 rounded border border-[#DCE7F5] shadow-2xs">
+                {book.categoryLabel}
               </span>
             )}
           </div>
@@ -78,27 +78,33 @@ export default function BookCard({
             {/* Author line */}
             <p className="text-xs text-slate-500 font-medium truncate mt-1">
               By <span className="text-slate-800 font-semibold">{book.author}</span>
-              {book.year && <span className="text-slate-400"> · {book.year}</span>}
+              {hasNumericValue(book.year) && <span className="text-slate-400"> · {book.year}</span>}
             </p>
 
             {/* Author Role */}
-            <p className="text-[11px] text-slate-400 italic truncate mt-0.5">
-              {book.authorRole || 'Faculty Monograph'}
-            </p>
+            {hasMeaningfulText(book.authorRole) && (
+              <p className="text-[11px] text-slate-400 italic truncate mt-0.5">
+                {book.authorRole.trim()}
+              </p>
+            )}
           </div>
 
           {/* Curator quote */}
-          <div className="h-11 bg-[#F5F9FF] p-2 rounded border-l-2 border-[#2563EB] flex items-center overflow-hidden">
-            <p className="text-[11px] text-slate-600 italic line-clamp-2 leading-relaxed">
-              &ldquo;{book.curatorQuote}&rdquo;
-            </p>
-          </div>
+          {hasMeaningfulText(book.curatorQuote) && (
+            <div className="h-11 bg-[#F5F9FF] p-2 rounded border-l-2 border-[#2563EB] flex items-center overflow-hidden">
+              <p className="text-[11px] text-slate-600 italic line-clamp-2 leading-relaxed">
+                &ldquo;{book.curatorQuote.trim()}&rdquo;
+              </p>
+            </div>
+          )}
 
           {/* Shelf location */}
-          <div className="flex items-center text-[11px] text-slate-500 pt-0.5">
-            <MapPin className="w-3.5 h-3.5 text-blue-600 mr-1 shrink-0" />
-            <span className="truncate">{book.location}</span>
-          </div>
+          {hasMeaningfulText(book.location) && (
+            <div className="flex items-center text-[11px] text-slate-500 pt-0.5">
+              <MapPin className="w-3.5 h-3.5 text-blue-600 mr-1 shrink-0" />
+              <span className="truncate">{book.location}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -128,11 +134,15 @@ export default function BookCard({
           </div>
 
           {/* Rating */}
-          <div className="flex items-center space-x-1 text-xs font-semibold text-[#0B1F3A]">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span>{book.rating}</span>
-            <span className="text-[10px] text-slate-400">({book.reviewsCount})</span>
-          </div>
+          {hasNumericValue(book.rating) && (
+            <div className="flex items-center space-x-1 text-xs font-semibold text-[#0B1F3A]">
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <span>{book.rating}</span>
+              {hasNumericValue(book.reviewsCount) && (
+                <span className="text-[10px] text-slate-400">({book.reviewsCount})</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Action buttons */}
@@ -161,7 +171,7 @@ export default function BookCard({
                 : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
             }`}
           >
-            {isFallback ? 'Offline' : isAvailable ? 'Issue Book' : 'Join Waitlist'}
+            {isFallback ? 'Offline' : isAvailable ? 'Issue Book' : 'Unavailable'}
           </button>
         </div>
       </div>

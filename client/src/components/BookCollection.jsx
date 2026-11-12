@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { LayoutGrid, List, Library, RotateCcw, Bookmark } from 'lucide-react';
 import BookCard from './BookCard';
 import BookCoverImage from './BookCoverImage';
+import { hasMeaningfulText } from '../utils/bookDisplayUtils';
 
 export default function BookCollection({
   books,
@@ -127,15 +128,14 @@ export default function BookCollection({
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center space-x-2">
-                      <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-[#F3EFEA] text-[#0B1320] border border-[#E8E2D9]">
-                        {book.callNumber}
-                      </span>
-                      <span className="text-xs font-semibold text-[#6E8578]">
-                        {book.categoryLabel}
-                      </span>
-                      {book.editorPick && (
-                        <span className="text-[9px] uppercase tracking-wider font-bold bg-[#C88A35] text-white px-1.5 py-0.2 rounded">
-                          Staff Pick
+                      {hasMeaningfulText(book.callNumber) && (
+                        <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-[#F3EFEA] text-[#0B1320] border border-[#E8E2D9]">
+                          {book.callNumber}
+                        </span>
+                      )}
+                      {hasMeaningfulText(book.categoryLabel) && (
+                        <span className="text-xs font-semibold text-[#6E8578]">
+                          {book.categoryLabel}
                         </span>
                       )}
                     </div>
@@ -147,11 +147,16 @@ export default function BookCollection({
                       {book.title}
                     </h4>
                     <p className="text-xs text-[#64748B] truncate mt-0.5">
-                      {book.author} · <span className="italic">{book.authorRole}</span>
+                      {book.author}
+                      {hasMeaningfulText(book.authorRole) && (
+                        <> · <span className="italic">{book.authorRole.trim()}</span></>
+                      )}
                     </p>
-                    <p className="text-xs text-[#475569] italic mt-1 line-clamp-1 max-w-xl">
-                      &ldquo;{book.curatorQuote}&rdquo;
-                    </p>
+                    {hasMeaningfulText(book.curatorQuote) && (
+                      <p className="text-xs text-[#475569] italic mt-1 line-clamp-1 max-w-xl">
+                        &ldquo;{book.curatorQuote.trim()}&rdquo;
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -161,9 +166,11 @@ export default function BookCollection({
                     <span className="text-xs font-semibold text-[#0B1320] block">
                       {isAvailable ? `Available (${book.copiesAvailable} in stacks)` : book.status}
                     </span>
-                    <span className="text-[11px] text-[#94A3B8] block truncate max-w-[150px]">
-                      {book.location}
-                    </span>
+                    {hasMeaningfulText(book.location) && (
+                      <span className="text-[11px] text-[#94A3B8] block truncate max-w-[150px]">
+                        {book.location}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -194,7 +201,7 @@ export default function BookCollection({
                           : 'bg-[#E8E2D9] text-[#94A3B8] border border-[#D5CEC4] cursor-not-allowed'
                       }`}
                     >
-                      {isAvailable ? 'Issue Book' : 'Waitlist'}
+                      {isAvailable ? 'Issue Book' : 'Unavailable'}
                     </button>
                   </div>
                 </div>

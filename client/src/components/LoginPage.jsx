@@ -15,12 +15,18 @@ import {
   UserPlus
 } from 'lucide-react';
 import { login, register } from '../services/authService';
+import { isNetworkConnectivityError } from '../utils/connectivityUtils';
 
 export default function LoginPage({ 
   onLoginSuccess, 
   onBackToHome, 
-  initialMode = 'STUDENT' 
+  initialMode = 'STUDENT',
+  isBackendOnline = true,
+  isCheckingBackend = false,
+  onAuthConnectivityChange,
 }) {
+  const [localNetworkError, setLocalNetworkError] = useState(false);
+  const effectiveBackendOnline = isBackendOnline && !localNetworkError;
   // Mode selection: 'STUDENT' (Normal User) or 'LIBRARIAN' (Admin/Staff)
   const [selectedRole, setSelectedRole] = useState(
     initialMode === 'LIBRARIAN' ? 'LIBRARIAN' : 'STUDENT'
@@ -60,7 +66,7 @@ export default function LoginPage({
     if (!email.trim()) {
       errors.email = 'Email address is required.';
     } else if (!isValidEmail(email)) {
-      errors.email = 'Please enter a valid email format (e.g., student@vssut.ac.in).';
+      errors.email = 'Please enter a valid email address.';
     }
 
     if (!password) {
@@ -116,6 +122,8 @@ export default function LoginPage({
     try {
       // Execute real backend authentication
       const authData = await login({ email, password });
+      setLocalNetworkError(false);
+      onAuthConnectivityChange?.(true);
       const user = authData.user;
       const actualRole = user.role; // 'ADMIN', 'MANAGER', or 'USER'
 
@@ -142,6 +150,13 @@ export default function LoginPage({
       }, 400);
 
     } catch (err) {
+      if (isNetworkConnectivityError(err)) {
+        setLocalNetworkError(true);
+        onAuthConnectivityChange?.(false);
+      } else {
+        setLocalNetworkError(false);
+        onAuthConnectivityChange?.(true);
+      }
       setServerError(err.message || 'An error occurred during authentication.');
     } finally {
       setIsSubmitting(false);
@@ -166,6 +181,8 @@ export default function LoginPage({
         email: regEmail,
         password: regPassword,
       });
+      setLocalNetworkError(false);
+      onAuthConnectivityChange?.(true);
 
       setSuccessNotice(
         `Student account for ${newUser.fullName} created successfully! Please sign in with your password.`
@@ -178,6 +195,13 @@ export default function LoginPage({
       setRegPassword('');
       setRegConfirmPassword('');
     } catch (err) {
+      if (isNetworkConnectivityError(err)) {
+        setLocalNetworkError(true);
+        onAuthConnectivityChange?.(false);
+      } else {
+        setLocalNetworkError(false);
+        onAuthConnectivityChange?.(true);
+      }
       setServerError(err.message || 'Student registration failed. Please check inputs.');
     } finally {
       setIsSubmitting(false);
@@ -209,8 +233,22 @@ export default function LoginPage({
         </button>
 
         <div className="flex items-center space-x-2 text-xs text-slate-500">
-          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-          <span>VSSUT Security Authority Active</span>
+          <span
+            className={`w-2 h-2 rounded-full ${
+              isCheckingBackend
+                ? 'bg-amber-500 animate-pulse'
+                : effectiveBackendOnline
+                ? 'bg-emerald-500 animate-pulse'
+                : 'bg-rose-500'
+            }`}
+          ></span>
+          <span>
+            {isCheckingBackend
+              ? 'Connecting to Auth Service...'
+              : effectiveBackendOnline
+              ? 'VSSUT Security Authority Active'
+              : 'Authentication Service Offline'}
+          </span>
         </div>
       </div>
 
@@ -268,7 +306,7 @@ export default function LoginPage({
               <span>Central Library Stacks, Floors 1–4</span>
             </p>
             <p className="text-slate-400">
-              Integrated with Spring Security HMAC-SHA256
+              Authorized Patron &amp; Staff Access
             </p>
           </div>
         </div>
@@ -473,7 +511,7 @@ export default function LoginPage({
                       if (formErrors.email) setFormErrors((prev) => ({ ...prev, email: null }));
                     }}
                     disabled={isSubmitting}
-                    placeholder={selectedRole === 'LIBRARIAN' ? 'admin@athenaeum.edu' : 'student@vssut.ac.in'}
+                    placeholder="Enter your institutional email"
                     className={`block w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm bg-[#F5F9FF] border rounded-lg transition-colors focus:bg-white focus:outline-none ${
                       formErrors.email 
                         ? 'border-red-400 focus:ring-1 focus:ring-red-500' 
@@ -561,33 +599,6 @@ export default function LoginPage({
                 )}
               </button>
 
-              {/* Testing helper credentials for demonstration */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                <span>Demo Shortcuts:</span>
-                <div className="space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedRole('LIBRARIAN');
-                      setEmail('admin@athenaeum.edu');
-                    }}
-                    className="text-[#2563EB] hover:underline cursor-pointer"
-                  >
-                    Load Librarian
-                  </button>
-                  <span>·</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedRole('STUDENT');
-                      setEmail('student@vssut.ac.in');
-                    }}
-                    className="text-[#2563EB] hover:underline cursor-pointer"
-                  >
-                    Load Student
-                  </button>
-                </div>
-              </div>
             </form>
           )}
 
@@ -620,7 +631,7 @@ export default function LoginPage({
                     if (formErrors.regFullName) setFormErrors((prev) => ({ ...prev, regFullName: null }));
                   }}
                   disabled={isSubmitting}
-                  placeholder="e.g. Pragyan Mohanta"
+                  placeholder="Enter your full name"
                   className={`block w-full px-3 py-2 text-xs sm:text-sm bg-[#F5F9FF] border rounded-lg focus:bg-white focus:outline-none ${
                     formErrors.regFullName ? 'border-red-400' : 'border-[#DCE7F5] focus:border-[#2563EB]'
                   }`}
@@ -644,7 +655,7 @@ export default function LoginPage({
                     if (formErrors.regEmail) setFormErrors((prev) => ({ ...prev, regEmail: null }));
                   }}
                   disabled={isSubmitting}
-                  placeholder="student@vssut.ac.in"
+                  placeholder="Enter your university email"
                   className={`block w-full px-3 py-2 text-xs sm:text-sm bg-[#F5F9FF] border rounded-lg focus:bg-white focus:outline-none ${
                     formErrors.regEmail ? 'border-red-400' : 'border-[#DCE7F5] focus:border-[#2563EB]'
                   }`}

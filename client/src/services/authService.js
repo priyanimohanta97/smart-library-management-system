@@ -9,6 +9,7 @@
 const AUTH_STORAGE_KEY = 'athenaeum_auth_session';
 
 import { buildApiUrl } from './apiConfig.js';
+import { createConnectivityNetworkError } from '../utils/connectivityUtils.js';
 
 /**
  * Sends authentication credentials to the backend endpoint: POST /api/auth/login
@@ -39,27 +40,30 @@ export async function login({ email, password }) {
       body: JSON.stringify(payload),
     });
   } catch (networkError) {
-    throw new Error(
-      'Unable to connect to the Athenaeum authentication server. Please ensure the backend service is running on port 8080.'
+    throw createConnectivityNetworkError(
+      'Unable to connect to the library authentication service. Please verify backend availability.',
+      networkError
     );
   }
 
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
+    let httpError;
     if (response.status === 401) {
-      throw new Error(data?.message || 'Invalid institutional email or password.');
-    }
-    if (response.status === 400 && data?.validationErrors) {
+      httpError = new Error(data?.message || 'Invalid institutional email or password.');
+    } else if (response.status === 400 && data?.validationErrors) {
       const details = Object.values(data.validationErrors).join('; ');
-      throw new Error(details || data?.message || 'Invalid request data.');
+      httpError = new Error(details || data?.message || 'Invalid request data.');
+    } else if (response.status === 403) {
+      httpError = new Error('Access denied: your account is inactive or restricted.');
+    } else {
+      httpError = new Error(
+        data?.message || `Authentication failed with status code ${response.status}.`
+      );
     }
-    if (response.status === 403) {
-      throw new Error('Access denied: your account is inactive or restricted.');
-    }
-    throw new Error(
-      data?.message || `Authentication failed with status code ${response.status}.`
-    );
+    httpError.status = response.status;
+    throw httpError;
   }
 
   if (!data?.token || !data?.user) {
@@ -293,22 +297,26 @@ export async function register({ fullName, email, password }) {
       body: JSON.stringify(payload),
     });
   } catch (networkError) {
-    throw new Error(
-      'Unable to connect to the Athenaeum registration server. Please verify backend availability.'
+    throw createConnectivityNetworkError(
+      'Unable to connect to the library registration service. Please verify backend availability.',
+      networkError
     );
   }
 
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
+    let httpError;
     if (response.status === 409) {
-      throw new Error(data?.message || 'An account with this email address already exists.');
-    }
-    if (response.status === 400 && data?.validationErrors) {
+      httpError = new Error(data?.message || 'An account with this email address already exists.');
+    } else if (response.status === 400 && data?.validationErrors) {
       const details = Object.values(data.validationErrors).join('; ');
-      throw new Error(details || data?.message || 'Validation failed.');
+      httpError = new Error(details || data?.message || 'Validation failed.');
+    } else {
+      httpError = new Error(data?.message || 'Registration failed.');
     }
-    throw new Error(data?.message || 'Registration failed.');
+    httpError.status = response.status;
+    throw httpError;
   }
 
   return data;

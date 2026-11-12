@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Cpu, Compass, Landmark, Feather, Atom, ArrowRight } from 'lucide-react';
+import { computeCategoryBookCounts, formatVolumeCount } from '../utils/bookDisplayUtils';
 
 const DISCIPLINES_DATA = [
   {
@@ -7,7 +8,6 @@ const DISCIPLINES_DATA = [
     name: 'AI & Computational Thinking',
     classification: 'LC: QA75 – QA76.9',
     description: 'Recursion, neuro-symbolic reasoning, cybernetics, and human-computer symbiosis.',
-    volumes: '42,100 Volumes',
     icon: Cpu,
   },
   {
@@ -15,7 +15,6 @@ const DISCIPLINES_DATA = [
     name: 'Philosophy & Engineering Ethics',
     classification: 'LC: B1 – B5802',
     description: 'Classical antiquity, epistemology, engineering ethics, and intellectual inquiry.',
-    volumes: '28,450 Volumes',
     icon: Compass,
   },
   {
@@ -23,7 +22,6 @@ const DISCIPLINES_DATA = [
     name: 'Political Economy & Society',
     classification: 'LC: H1 – HV9960',
     description: 'Institutional economics, technology policy, statecraft, and social systems.',
-    volumes: '36,800 Volumes',
     icon: Landmark,
   },
   {
@@ -31,7 +29,6 @@ const DISCIPLINES_DATA = [
     name: 'Literary Classics & Essays',
     classification: 'LC: PA – PZ4',
     description: 'World epics, Modernist prose, translated correspondence, and critical theory.',
-    volumes: '54,200 Volumes',
     icon: Feather,
   },
   {
@@ -39,12 +36,13 @@ const DISCIPLINES_DATA = [
     name: 'Natural History & Applied Physics',
     classification: 'LC: Q – QC999',
     description: 'Quantum mechanics, thermodynamics, material sciences, and cosmological physics.',
-    volumes: '22,650 Volumes',
     icon: Atom,
   },
 ];
 
-export default function CategorySection({ onSelectCategory }) {
+export default function CategorySection({ books = [], onSelectCategory }) {
+  const categoryCounts = useMemo(() => computeCategoryBookCounts(books), [books]);
+
   const handleSelect = (categoryId) => {
     onSelectCategory(categoryId);
   };
@@ -76,6 +74,7 @@ export default function CategorySection({ onSelectCategory }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
         {DISCIPLINES_DATA.map((discipline) => {
           const Icon = discipline.icon;
+          const volumeCount = categoryCounts[discipline.id] || 0;
           return (
             <div
               key={discipline.id}
@@ -110,7 +109,7 @@ export default function CategorySection({ onSelectCategory }) {
 
               <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs">
                 <span className="font-medium text-slate-400">
-                  {discipline.volumes}
+                  {formatVolumeCount(volumeCount)}
                 </span>
                 <span className="text-[#2563EB] font-semibold flex items-center space-x-1">
                   <span>Explore Stack</span>

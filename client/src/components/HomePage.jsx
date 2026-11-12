@@ -20,6 +20,8 @@ export default function HomePage({
   onExploreBooks,
   onOpenLogin,
   onNavigateNotesPyqs,
+  isBackendOnline = true,
+  isCheckingBackend = false,
 }) {
   return (
     <div className="w-full bg-[#F8FAFC] text-[#334155] font-interface">
@@ -104,8 +106,16 @@ export default function HomePage({
                 <span>Reading Hall: 08:00 – 22:00</span>
               </div>
               <div className="flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0" />
-                <span>Synchronized Student OPAC</span>
+                <CheckCircle2 className={`w-4 h-4 shrink-0 ${
+                  isCheckingBackend ? 'text-amber-400' : isBackendOnline ? 'text-blue-400' : 'text-rose-400'
+                }`} />
+                <span>
+                  {isCheckingBackend
+                    ? 'Connecting to Student OPAC...'
+                    : isBackendOnline
+                    ? 'Synchronized Student OPAC'
+                    : 'Student OPAC Offline'}
+                </span>
               </div>
             </div>
           </div>
@@ -294,9 +304,9 @@ export default function HomePage({
                     <CheckCircle2 className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-[#0B1F3A]">Smart Coursework Recommendations</h3>
+                    <h3 className="text-sm font-bold text-[#0B1F3A]">Discipline-Aligned Discovery</h3>
                     <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-                      Discover complementary monographs and research treatises aligned with your academic discipline and syllabus.
+                      Locate textbooks, monographs, and reference titles organized across university academic disciplines and syllabi.
                     </p>
                   </div>
                 </div>
@@ -308,7 +318,7 @@ export default function HomePage({
                   <div>
                     <h3 className="text-sm font-bold text-[#0B1F3A]">Secure Role-Based Governance</h3>
                     <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-                      Isolated student research areas and administrator management tools powered by Spring Security and JWT.
+                      Dedicated student accounts and role-based administrator tools for managing borrowing and library holdings.
                     </p>
                   </div>
                 </div>
@@ -478,7 +488,7 @@ export default function HomePage({
                 </div>
               </div>
               <p className="text-xs text-slate-400 max-w-md leading-relaxed">
-                Smart Library Book Recommendation & Management System. Serving students, research scholars, and faculty with integrated bibliographic access and AI-driven recommendations.
+                Smart Library Management &amp; Discovery System. Serving VSSUT students, research scholars, and faculty with integrated catalogue search, academic resources, and circulation services.
               </p>
             </div>
 
@@ -537,13 +547,11 @@ export default function HomePage({
           {/* Bottom Bar */}
           <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-3">
             <p>
-              &copy; {new Date().getFullYear()} VSSUT Central Library. Developed for College Mini Project.
+              &copy; {new Date().getFullYear()} VSSUT Central Library. All rights reserved.
             </p>
-            <div className="flex items-center space-x-4 text-[11px]">
-              <span>ISBD Bibliographic Standards</span>
-              <span>·</span>
-              <span>Spring Boot + React Platform</span>
-            </div>
+            <p className="text-[11px] text-slate-400">
+              Veer Surendra Sai University of Technology · Burla
+            </p>
           </div>
         </div>
       </footer>

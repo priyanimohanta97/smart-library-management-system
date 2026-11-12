@@ -10,7 +10,6 @@ import BookDetailModal from './components/BookDetailModal';
 import SavedBooksDrawer from './components/SavedBooksDrawer';
 import NotificationDrawer from './components/NotificationDrawer';
 import AuthRequiredModal from './components/AuthRequiredModal';
-import { BOOKS as STATIC_FALLBACK_BOOKS } from './data/books';
 import { CheckCircle2, AlertCircle, WifiOff } from 'lucide-react';
 import { getStoredAuth, clearStoredAuth, fetchCurrentUser } from './services/authService';
 import { fetchBooks } from './services/bookService';
@@ -50,7 +49,9 @@ export default function App() {
   const [books, setBooks] = useState([]);
   const [isLoadingBooks, setIsLoadingBooks] = useState(true);
   const [catalogueOfflineError, setCatalogueOfflineError] = useState(null);
+  const [authOffline, setAuthOffline] = useState(false);
   const [isFallbackCatalogue, setIsFallbackCatalogue] = useState(false);
+  const isBackendOnline = !catalogueOfflineError && !authOffline;
 
   // Modal & Drawer State
   const [inspectedBook, setInspectedBook] = useState(null);
@@ -119,6 +120,7 @@ export default function App() {
       // Legitimate live response (even if empty []) is preserved as authoritative
       setBooks(Array.isArray(liveBooks) ? liveBooks : []);
       setCatalogueOfflineError(null);
+      setAuthOffline(false);
       setIsFallbackCatalogue(false);
     } catch (err) {
       setCatalogueOfflineError(err.message || 'Unable to connect to library catalog.');
@@ -424,6 +426,7 @@ export default function App() {
 
   // Authentication Handlers
   const handleLoginSuccess = (authData) => {
+    setAuthOffline(false);
     const user = authData.user;
     setCurrentUser(user);
 
@@ -465,13 +468,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#334155] font-interface flex flex-col selection:bg-blue-100 selection:text-[#0B1F3A]">
-      {/* Offline Warning Banner (if backend on port 8080 is disconnected) */}
+      {/* Offline Warning Banner */}
       {catalogueOfflineError && (
-        <div className="bg-amber-500 text-white text-xs px-4 py-2 flex items-center justify-between shadow-xs">
+        <div className="bg-amber-600 text-white text-xs px-4 py-2 flex items-center justify-between shadow-xs">
           <div className="flex items-center space-x-2">
             <WifiOff className="w-4 h-4 shrink-0" />
             <span>
-              <strong>Catalogue Service Offline:</strong> Could not connect to Spring Boot API on port 8080. Displaying cached catalog. Start backend for live loans.
+              <strong>Catalogue Service Offline:</strong> Unable to reach the library backend service. Live inventory and borrowing are temporarily unavailable.
             </span>
           </div>
           <button
@@ -499,6 +502,8 @@ export default function App() {
         currentView={currentView}
         unreadNotificationsCount={unreadCount}
         onOpenNotifications={() => setIsNotificationDrawerOpen(true)}
+        isBackendOnline={isBackendOnline}
+        isCheckingBackend={isLoadingBooks}
       />
 
       {/* Main View Switcher */}
@@ -510,6 +515,8 @@ export default function App() {
             onExploreBooks={handleExploreBooks}
             onOpenLogin={() => handleOpenLogin('STUDENT')}
             onNavigateNotesPyqs={handleNavigateNotesPyqs}
+            isBackendOnline={isBackendOnline}
+            isCheckingBackend={isLoadingBooks}
           />
         )}
 
@@ -545,6 +552,9 @@ export default function App() {
             onLoginSuccess={handleLoginSuccess}
             onBackToHome={handleNavigateHome}
             initialMode={loginInitialRole}
+            isBackendOnline={isBackendOnline}
+            isCheckingBackend={isLoadingBooks}
+            onAuthConnectivityChange={(isOnline) => setAuthOffline(!isOnline)}
           />
         )}
 
@@ -553,7 +563,6 @@ export default function App() {
           <StudentDashboard
             currentUser={currentUser}
             books={books}
-            isFallbackCatalogue={isFallbackCatalogue}
             savedBookIds={savedBookIds}
             onToggleSave={handleToggleSave}
             onInspectBook={(book) => setInspectedBook(book)}
@@ -570,10 +579,11 @@ export default function App() {
           <LibrarianDashboard
             currentUser={currentUser}
             books={books}
-            isFallbackCatalogue={isFallbackCatalogue}
             onLogout={handleLogout}
             onInspectBook={(book) => setInspectedBook(book)}
             onBookAdded={loadBooksFromBackend}
+            isBackendOnline={isBackendOnline}
+            isCheckingBackend={isLoadingBooks}
           />
         )}
       </main>
